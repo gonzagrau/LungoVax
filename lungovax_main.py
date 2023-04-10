@@ -1,5 +1,3 @@
-import numpy as np
-from matplotlib import pyplot as plt
 from typing import Tuple
 from ODE_solver import *
 
@@ -22,9 +20,8 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, star
     tau = 1 / (R * C)
     ex_time = end_time + pause_lapsus
     exhale = lambda x: V_c * np.exp(-tau * (x - ex_time))
-    v_vol = np.vectorize(
-        lambda x: inhale(x) * (start_time < x < end_time) + V_c * (end_time <= x < ex_time) + exhale(x) * (
-                    x >= ex_time))
+    v_vol = np.vectorize(lambda t: \
+            inhale(t) * (start_time < t < end_time) + V_c * (end_time <= t < ex_time) + exhale(t) * (t >= ex_time))
 
     volume = v_vol(T)
     flux = np.gradient(volume, T)
@@ -53,13 +50,18 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, PEEP = 0.0, 
     v_0 = 0
     volume = single_ruku4(T, f, v_0)
     '''
+    volume could be found analitically by the following expression:
+    
     inhale = lambda t : (C*(P-PEEP))*(1 - np.exp(-(t-start_time)/(R*C)))
     exhale = lambda t : (C*(P-PEEP))*(np.exp(-(t-end_time)/(R*C)))
     vol_func = np.vectorize( lambda t : inhale(t)*(start_time < t < end_time) + exhale(t)*(t > end_time) )
     volume = vol_func(T)
+    
+    the numerical solution was preferred for continuity issues, but was ultimately left as a comment for users
+    who do not wish to rely on the ODE solver
     '''
     flux = np.gradient(volume, T)
-    flux[abs(T - end_time) < h] = 0  # fixing a discontinuity overshoot at t ~ end_time
+    # flux[abs(T - end_time) < h] = 0  # fixing an overshoot at t ~ end_time when using the analitycal solution
     return volume, flux, pressure
 
 
@@ -79,7 +81,7 @@ def plot_VFP(t: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
 
 def main():
     C = 40
-    R = 0.1
+    R = 0.05
     P = 20
 
     T = np.linspace(0, 30, 1000)
