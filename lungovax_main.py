@@ -1,5 +1,6 @@
+import numpy as np
+from matplotlib import pyplot as plt
 from typing import Tuple
-from ODE_solver import *
 
 def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, start_time=5.0,
                   pause_lapsus=2.0, end_time=15.0) -> Tuple[np.ndarray, ...]:
@@ -35,7 +36,7 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, PEEP = 0.0, 
     T: array containing the time samples
     C: lung compliance
     R: lung flux resistance
-    P: prefixed constant pressute to be applied
+    P: prefixed constant pressure to be applied
     start_time: time when pressure pulse begins
     end_time: time when pressure pulse ends
     pause_lapsus: lenght of the time interval between inhalation and exhalation
@@ -46,22 +47,13 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, PEEP = 0.0, 
     p_func = np.vectorize( lambda t : P*(start_time <= t < end_time) )
     pressure = p_func(T)
 
-    f = lambda t, v : (p_func(t) - PEEP - v/C)*1/R
-    v_0 = 0
-    volume = single_ruku4(T, f, v_0)
-    '''
-    volume could be found analitically by the following expression:
-    
     inhale = lambda t : (C*(P-PEEP))*(1 - np.exp(-(t-start_time)/(R*C)))
     exhale = lambda t : (C*(P-PEEP))*(np.exp(-(t-end_time)/(R*C)))
     vol_func = np.vectorize( lambda t : inhale(t)*(start_time < t < end_time) + exhale(t)*(t > end_time) )
     volume = vol_func(T)
-    
-    the numerical solution was preferred for continuity issues, but was ultimately left as a comment for users
-    who do not wish to rely on the ODE solver
-    '''
+
     flux = np.gradient(volume, T)
-    # flux[abs(T - end_time) < h] = 0  # fixing an overshoot at t ~ end_time when using the analitycal solution
+    flux[abs(T - end_time) < h] = 0  # fixing an overshoot at t ~ end_time
     return volume, flux, pressure
 
 
@@ -80,11 +72,12 @@ def plot_VFP(t: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
 
 
 def main():
-    C = 40
+    C = 20
     R = 0.05
-    P = 20
+    P = 3
 
     T = np.linspace(0, 30, 1000)
+
     volume, flux, pressure = pressure_clamp_sim(T, C, R, P, end_time=13.33)
     plot_VFP(T, volume, flux, pressure)
 
