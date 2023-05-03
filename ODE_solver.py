@@ -4,18 +4,18 @@ from typing import Callable
 
 
 class FunctionArray(object):
-    def __init__(self, functions=None):
+    def __init__(self, functions: list = None) -> None:
         if functions is None:
             functions = []
         self.functions = functions
 
-    def append(self, func: Callable):
+    def append(self, func: Callable) -> None:
         self.functions.append(func)
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> np.ndarray:
         return np.array([f(*args, **kwargs) for f in self.functions])
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.functions)
 
 
@@ -53,7 +53,7 @@ def ruku4(T: np.ndarray, F: FunctionArray, X_0: np.ndarray) -> np.ndarray:
     return X
 
 
-def single_ruku4(T: np.ndarray, f: Callable, x0 : float) -> np.ndarray:
+def single_ruku4(T: np.ndarray, f: Callable, x0 : float|int) -> np.ndarray:
     """
     @param T: time array of len N, defined as the range a:h:b
     @param f: function of time and x, f(t, x)
@@ -65,8 +65,7 @@ def single_ruku4(T: np.ndarray, f: Callable, x0 : float) -> np.ndarray:
 
     @return: x, a 1-dimensional numpy array of len N with the values of x at every instant T[j]
     """
-    F = FunctionArray()
-    F.append(f)
+    F = FunctionArray([f])
     X_0 = np.array([x0])
     x = ruku4(T, F, X_0)[:, 0]
     return x
@@ -96,12 +95,12 @@ def higher_order_ODE(T: np.ndarray, f: Callable, X_0: np.ndarray, v: np.ndarray)
     F = FunctionArray()
     for i in range(M-1):
         F.append(lambda t, X : X[i+1])
-    F.append(lambda t, X : ( f(t, X[0]) - np.dot(v[:-1], X)) / v[-1] )
+    F.append(lambda t, X : ( f(t, X[0]) - np.dot(v[:-1], X)) / v[-1])
     x = ruku4(T, F, X_0)[:, 0]
     return x
 
 
-def test_ruku4():
+def test_ruku4() -> None:
     """
     solves the system
     {dx/dt = x + 2*y
@@ -126,7 +125,7 @@ def test_ruku4():
     plt.show()
 
 
-def test_single_ruku4():
+def test_single_ruku4() -> None:
     """
     solves the ODE
     dX/dt = t*x
@@ -143,14 +142,14 @@ def test_single_ruku4():
     plt.show()
 
 
-def test_higher_order_ODE():
+def test_higher_order_ODE() -> None:
     """
     solves the order 2 ODE
     x'' − 10*x' + 9*x = 5*t, x(0)=−1, x'(0)=2
     and plots it compared to the analytical solution
     """
     T = np.linspace(0, 0.5, 200)
-    coefficients = np.array([9,-10,1])
+    coefficients = np.array([9,- 10, 1])
     X_0 = np.array([-1, 2])
     f = lambda t, x : 5*t
     x = higher_order_ODE(T, f, X_0, coefficients)
@@ -159,7 +158,6 @@ def test_higher_order_ODE():
     plt.plot(T, 50/81 + 5*T/9 - 2*np.exp(T) + (31/81)*np.exp(9*T), 'b--')
 
     plt.show()
-
 
 
 if __name__ == '__main__':
