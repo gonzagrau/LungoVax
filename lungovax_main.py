@@ -17,18 +17,22 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, star
 
     returns: volume, flux, and pressure for every instant of time
     """
+    # first, simulate a flux pulse for inhalation
+    flux_pulse = np.vectorize ( lambda t : F*( start_time < t < end_time) )
+    flux = flux_pulse(T)
+    # integrate flux to find volume
+    dt = T[1] - T[0]
+    volume = np.cumsum(flux)*dt
+    pressure =  R * flux + volume / C + PEEP
 
-    inhale = lambda x: F * (x - start_time)
-    V_c = F * (end_time - start_time)
-    tau = 1 / (R * C)
+    # after the pause lapsus, simulate exhalation
     ex_time = end_time + pause_lapsus
-    exhale = lambda x: V_c * np.exp(-tau * (x - ex_time))
-    v_vol = np.vectorize(lambda t: \
-            inhale(t) * (start_time < t < end_time) + V_c * (end_time <= t < ex_time) + exhale(t) * (t >= ex_time))
-
-    volume = v_vol(T)
-    flux = np.gradient(volume, T)
-    pressure = R * flux + volume / C + PEEP
+    pressure[T > ex_time] = 0
+    f = lambda t, v : -(PEEP + v/C)*1/R
+    v_0 = volume[-1]
+    volume[T > ex_time] = single_ruku4(T[T > ex_time], f, v_0)
+    flux[T > ex_time] = np.gradient(volume[T > ex_time], T[T > ex_time])
+   
     return volume, flux, pressure
 
 
@@ -46,17 +50,11 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, *, PEEP = 0.
 
     returns: volume, flux, and pressure for every instant of time
     """
-    h = T[1] - T[0]
     p_func = np.vectorize( lambda t : P*(start_time <= t < end_time) )
     pressure = p_func(T)
-
-    inhale = lambda t : (C*(P-PEEP))*(1 - np.exp(-(t-start_time)/(R*C)))
-    exhale = lambda t : (C*(P-PEEP))*(np.exp(-(t-end_time)/(R*C)))
-    vol_func = np.vectorize( lambda t : inhale(t)*(start_time < t < end_time) + exhale(t)*(t > end_time) )
-    volume = vol_func(T)
-
+    f = lambda t, v : (p_func(t) - PEEP - v/C)*1/R
+    volume = single_ruku4(T, f, 0)
     flux = np.gradient(volume, T)
-    flux[abs(T - end_time) < h] = 0  # fixing an overshoot at t ~ end_time
     return volume, flux, pressure
 
 
@@ -80,23 +78,48 @@ def sin_pressure_sim(T: np.ndarray, C: float, R: float, freq: float, Amp: float,
     return volume, flux, pressure
 
 
-def plot_VFP(t: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.ndarray):
+def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.ndarray) -> None:
+    """
+        T: array representing time
+        volume, flux, pressure: arrays representing each quantity for every instant T[i]
+        plots volume, flux, and pressure against time
+    """
     fig, axs = plt.subplots(3, 1)
     for ax in axs:
         ax.set_xlabel('T')
-    axs[0].plot(t, volume, color='blue')
-    axs[0].set_ylabel('Volumen [ml]')
-    axs[1].plot(t, flux, color='green')
-    axs[1].set_ylabel("Flujo [L/min]")
-    axs[2].plot(t, pressure, color='#FF3366')
-    axs[2].set_ylabel("Presión [cmH2O]")
+    axs[0].plot(T, volume, color='blue')
+    axs[0].set_ylabel('Volume [ml]')
+    axs[1].plot(T, flux, color='green')
+    axs[1].set_ylabel("Flux [L/min]")
+    axs[2].plot(T, pressure, color='deeppink')
+    axs[2].set_ylabel("Pressure [cmH2O]")
 
     plt.show()
 
 
-def main():
+def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: np.ndarray,
+                     flux2: np.ndarray, press1: np.ndarray, press2: np.ndarray) -> None:
+    """
+        T: array representing time
+        vol1, flux1, press1: arrays representing initial volume, flux, and pressure for every instant T[i]
+        vol2, flux2, press2: arrays representing final volume, flux, and pressure for every instant T[i]
+        plots initial and final volume, flux, and pressure against time, superimposed.
+    """
+    fig, axs = plt.subplots(3, 1)
+    axs[2].set_xlabel('T')
+    axs[0].plot(T, vol1, '-b', T, vol2, '-.b')
+    axs[0].set_ylabel('Volume [ml]')
+    axs[1].plot(T, flux1, '-g', T, flux2, '-.g')
+    axs[1].set_ylabel("Flux [L/min]")
+    axs[2].plot(T, press1, color = 'deeppink')
+    axs[2].plot(T, press2, linestyle = '-.', color = 'deeppink')
+    axs[2].set_ylabel("Pressure [cmH2O]")
+
+    plt.show()
+
+def clamp_test():
     C = 25
-    R = 0.05
+    R = 0.1
     T = np.linspace(0, 30, 1000)
 
     P = 3.0
@@ -113,5 +136,15 @@ def main():
     plot_VFP(T, volume, flux, pressure)
 
 
+def comp_test():
+    T = np.linspace(0, 30, 1000)
+    C1 = 25
+    C2 = 15
+    R = 0.05
+    F = 5.0
+    v1, f1, p1 = vol_clamp_sim(T, C1, R, F)
+    v2, f2, p2 = vol_clamp_sim(T, C2, R, F)
+    comparative_plot(T , v1, v2, f1, f2, p1, p2)
+
 if __name__ == '__main__':
-    main()
+    comp_test()
