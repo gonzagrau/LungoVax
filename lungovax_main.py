@@ -27,11 +27,11 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, star
 
     # after the pause lapsus, simulate exhalation
     ex_time = end_time + pause_lapsus
-    pressure[T > ex_time] = 0
-    f = lambda t, v : -(PEEP + v/C)*1/R
+    pressure[T > ex_time] = PEEP
+    f = lambda t, v : -(v/C)*1/R
     v_0 = volume[-1]
     volume[T > ex_time] = single_ruku4(T[T > ex_time], f, v_0)
-    flux[T > ex_time] = np.gradient(volume[T > ex_time], T[T > ex_time])
+    flux[T > ex_time] = np.gradient(volume[T > ex_time], dt)
    
     return volume, flux, pressure
 
@@ -137,14 +137,15 @@ def clamp_test():
 
 
 def comp_test():
-    T = np.linspace(0, 30, 1000)
-    C1 = 25
-    C2 = 15
-    R = 0.05
-    F = 5.0
-    v1, f1, p1 = vol_clamp_sim(T, C1, R, F)
-    v2, f2, p2 = vol_clamp_sim(T, C2, R, F)
-    comparative_plot(T , v1, v2, f1, f2, p1, p2)
+    T = np.linspace(0, 30, 1500)
+    C = 15
+    R1 = 0.15
+    R2 = 0.05
+    clamp_val = 5.0
+    v1, f1, p1 = vol_clamp_sim(T, C, R1, clamp_val)
+    v2, f2, p2 = vol_clamp_sim(T, C, R2, clamp_val)
+    comparative_plot(T, v1, v2, f1, f2, p1, p2)
 
 if __name__ == '__main__':
+    #clamp_test()
     comp_test()
