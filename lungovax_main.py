@@ -3,8 +3,8 @@
 from typing import Tuple
 from ODE_solver import *
 
-def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, start_time=5.0,
-                  pause_lapsus=2.0, end_time=15.0) -> Tuple[np.ndarray, ...]:
+def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, start_time=0.5,
+                  pause_lapsus=0.2, end_time=1.5) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
@@ -36,8 +36,8 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, star
     return volume, flux, pressure
 
 
-def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, *, PEEP = 0.0, start_time = 5.0,
-                       end_time = 15.0) -> Tuple[np.ndarray, ...]:
+def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, *, PEEP = 0.0, start_time = 0.5,
+                       end_time = 1.5) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
@@ -84,15 +84,30 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
         volume, flux, pressure: arrays representing each quantity for every instant T[i]
         plots volume, flux, and pressure against time
     """
-    fig, axs = plt.subplots(3, 1)
-    for ax in axs:
-        ax.set_xlabel('T')
-    axs[0].plot(T, volume, color='blue')
-    axs[0].set_ylabel('Volume [ml]')
-    axs[1].plot(T, flux, color='green')
-    axs[1].set_ylabel("Flux [L/min]")
-    axs[2].plot(T, pressure, color='deeppink')
-    axs[2].set_ylabel("Pressure [cmH2O]")
+    fig, axs = plt.subplot_mosaic(
+        [["top left", "right column"],
+         ["middle left", "right column"],
+         ["bottom left", "right column"]]
+    )
+
+    axs["top left"].plot(T, volume, color='blue')
+    axs["top left"].set_ylabel('Volume [ml]')
+    axs["top left"].set_title("V, F, P vs. T")
+
+    axs["middle left"].plot(T, flux, color='green')
+    axs["middle left"].set_ylabel("Flux [L/min]")
+
+    axs["bottom left"].plot(T, pressure, color='deeppink')
+    axs["bottom left"].set_ylabel("Pressure [cmH2O]")
+    axs["bottom left"].set_xlabel("Time [s]")
+
+    axs["right column"].plot(volume, flux)
+    axs["right column"].set_title("Flux vs. Volume")
+    axs["right column"].set_xlabel('Volume')
+    axs["right column"].set_ylabel("Flux")
+    axs["right column"].axhline(y=0, color='k', linestyle='--')
+    plt.show()
+
 
     plt.show()
 
@@ -118,16 +133,16 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
     plt.show()
 
 def clamp_test():
-    C = 25
-    R = 0.1
-    T = np.linspace(0, 30, 1000)
+    C = 100
+    R = 0.01
+    T = np.linspace(0, 5, 1500)
 
     P = 3.0
-    volume, flux, pressure = pressure_clamp_sim(T, C, R, P, end_time=13.33)
+    volume, flux, pressure = pressure_clamp_sim(T, C, R, P, end_time=2.5)
     plot_VFP(T, volume, flux, pressure)
 
     F = 5.0
-    volume, flux, pressure = vol_clamp_sim(T, C, R, F, end_time=13.33)
+    volume, flux, pressure = vol_clamp_sim(T, C, R, F, end_time=2.5)
     plot_VFP(T, volume, flux, pressure)
 
     Amp = 3.0
@@ -137,7 +152,7 @@ def clamp_test():
 
 
 def comp_test():
-    T = np.linspace(0, 30, 1500)
+    T = np.linspace(0, 3, 1500)
     C = 15
     R1 = 0.15
     R2 = 0.05
@@ -147,5 +162,5 @@ def comp_test():
     comparative_plot(T, v1, v2, f1, f2, p1, p2)
 
 if __name__ == '__main__':
-    #clamp_test()
-    comp_test()
+    clamp_test()
+    #comp_test()

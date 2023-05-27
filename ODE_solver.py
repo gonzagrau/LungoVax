@@ -72,7 +72,7 @@ def single_ruku4(T: np.ndarray, f: Callable, x0 : float|int) -> np.ndarray:
 def higher_order_ODE(T: np.ndarray, f: Callable, X_0: np.ndarray, v: np.ndarray) -> np.ndarray:
     """
     :param np.ndarray: time array of len N, defined as the range a:h:b
-    :param Callable: function of time and x, f(t, x)
+    :param f: function of time and x, f(t, x)
     :param np.ndarray: initial conditions for x (x(T[0]), x'(T[0]), ... x**(M-1)(T[0]))
     :param np.ndarray: vector containing of len M + 1 containing the coefficients a_0, a_1, ..., a_M
 
