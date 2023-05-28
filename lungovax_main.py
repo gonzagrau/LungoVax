@@ -3,8 +3,8 @@
 from typing import Tuple
 from ODE_solver import *
 
-def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, start_time=0.5,
-                  pause_lapsus=0.2, end_time=1.5) -> Tuple[np.ndarray, ...]:
+def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, start_time=None,
+                  pause_lapsus=None, end_time=None) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
@@ -17,10 +17,20 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, star
 
     returns: volume, flux, and pressure for every instant of time
     """
+    if start_time is None:
+        start_time = T[len(T) // 3]
+
+    if end_time is None:
+        end_time = T[len(T) // 2]
+
+    if pause_lapsus is None:
+        pause_lapsus = np.max(T)*0.1
+
     # first, simulate a flux pulse for inhalation
-    flux_pulse = np.vectorize ( lambda t : F*( start_time < t < end_time) )
+    flux_pulse = np.vectorize ( lambda t : F*( start_time < t < end_time ) )
     flux = flux_pulse(T)
-    # integrate flux to find volume
+
+    # integrate flux to find volume and compute pressure
     dt = T[1] - T[0]
     volume = np.cumsum(flux)*dt
     pressure =  R * flux + volume / C + PEEP
@@ -29,15 +39,15 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, star
     ex_time = end_time + pause_lapsus
     pressure[T > ex_time] = PEEP
     f = lambda t, v : -(v/C)*1/R
-    v_0 = volume[-1]
+    v_0 = volume[-1]  # at this point in the simulation, volume[-1] is the maximum stored volume
     volume[T > ex_time] = single_ruku4(T[T > ex_time], f, v_0)
     flux[T > ex_time] = np.gradient(volume[T > ex_time], dt)
    
     return volume, flux, pressure
 
 
-def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, *, PEEP = 0.0, start_time = 0.5,
-                       end_time = 1.5) -> Tuple[np.ndarray, ...]:
+def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, *, PEEP = 0.0, start_time = None,
+                       end_time = None) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
@@ -50,10 +60,16 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, *, PEEP = 0.
 
     returns: volume, flux, and pressure for every instant of time
     """
+    if start_time is None:
+        start_time = T[len(T)//3]
+
+    if end_time is None:
+        end_time = T[len(T)//2]
+
     p_func = np.vectorize( lambda t : P*(start_time <= t < end_time) )
     pressure = p_func(T)
     f = lambda t, v : (p_func(t) - PEEP - v/C)*1/R
-    volume = single_ruku4(T, f, 0)
+    volume = single_ruku4(T, f, PEEP)
     flux = np.gradient(volume, T)
     return volume, flux, pressure
 
@@ -101,13 +117,12 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     axs["bottom left"].set_ylabel("Pressure [cmH2O]")
     axs["bottom left"].set_xlabel("Time [s]")
 
-    axs["right column"].plot(volume, flux)
+
+    axs["right column"].plot(volume, flux, alpha=0.5, color='k', linestyle='-')
     axs["right column"].set_title("Flux vs. Volume")
     axs["right column"].set_xlabel('Volume')
     axs["right column"].set_ylabel("Flux")
     axs["right column"].axhline(y=0, color='k', linestyle='--')
-    plt.show()
-
 
     plt.show()
 
@@ -135,18 +150,19 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
 def clamp_test():
     C = 100
     R = 0.01
-    T = np.linspace(0, 5, 1500)
+    T = np.linspace(0, 15, 1500)
 
-    P = 3.0
-    volume, flux, pressure = pressure_clamp_sim(T, C, R, P, end_time=2.5)
-    plot_VFP(T, volume, flux, pressure)
 
     F = 5.0
-    volume, flux, pressure = vol_clamp_sim(T, C, R, F, end_time=2.5)
+    volume, flux, pressure = vol_clamp_sim(T, C, R, F)
+    plot_VFP(T, volume, flux, pressure)
+
+    P = 3.0
+    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
     plot_VFP(T, volume, flux, pressure)
 
     Amp = 3.0
-    freq = 5/np.max(T)
+    freq = 10/np.max(T)
     volume, flux, pressure = sin_pressure_sim(T, C, R, freq, Amp)
     plot_VFP(T, volume, flux, pressure)
 

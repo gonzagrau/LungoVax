@@ -28,10 +28,10 @@ def ruku4(T: np.ndarray, F: FunctionArray, X_0: np.ndarray) -> np.ndarray:
     Uses the Runge-Kutta 4 method to solve the following system of differential equations:
     dX/dt = F(T, X(T))
     where X and F are vectors of functions of time, and T is a scalar. This translates to:
-    { dX[0](T)/dt = F[0](T, X(T)
-    { dX[1](T)/dt = F[1](T, X(T)
+    { dX[0](T)/dt = F[0](T, X(T))
+    { dX[1](T)/dt = F[1](T, X(T))
                  ...
-    { dX[M](T)/dt = F[M](T, X(T)
+    { dX[M](T)/dt = F[M](T, X(T))
 
     :return np.ndarray: X, an array of dimensions M x N with the values of each X[i] at T[j]
     """
