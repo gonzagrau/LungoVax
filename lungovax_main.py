@@ -1,24 +1,22 @@
-#import numpy as np
-#from matplotlib import pyplot as plt
+import numpy as np
+from matplotlib import pyplot as plt
 from typing import Tuple
 from ODE_solver import *
+from typing import Callable
 
-def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, start_time=None,
+def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: Callable , PEEP=0.0, *,
                   pause_lapsus=None, end_time=None) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
     R: lung flux resistance
-    F: prefixed constant flux to be applied
+    F: flux to be applied before the exhalation begins
     PEEP: positive end-expiratory pressure
-    start_time: time when inhalation begins
     end_time: time when inhalation ends
     pause_lapsus: lenght of the time interval between inhalation and exhalation
 
     returns: volume, flux, and pressure for every instant of time
     """
-    if start_time is None:
-        start_time = T[len(T) // 3]
 
     if end_time is None:
         end_time = T[len(T) // 2]
@@ -27,8 +25,8 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, star
         pause_lapsus = np.max(T)*0.1
 
     # first, simulate a flux pulse for inhalation
-    flux_pulse = np.vectorize ( lambda t : F*( start_time < t < end_time ) )
-    flux = flux_pulse(T)
+    F = np.vectorize(F)
+    flux = F(T)
 
     # integrate flux to find volume and compute pressure
     dt = T[1] - T[0]
@@ -36,63 +34,32 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: float, PEEP=0.0, *, star
     pressure =  R * flux + volume / C + PEEP
 
     # after the pause lapsus, simulate exhalation
-    ex_time = end_time + pause_lapsus
+    ex_time= end_time + pause_lapsus
     pressure[T > ex_time] = PEEP
-    f = lambda t, v : -(v/C)*1/R
-    v_0 = volume[-1]  # at this point in the simulation, volume[-1] is the maximum stored volume
+    f = lambda _, v : -(v/C)*1/R
+    index = np.abs(T - ex_time).argmin()
+    v_0 = volume[index]  # at this point in the simulation, volume[-1] is the maximum stored volume
     volume[T > ex_time] = single_ruku4(T[T > ex_time], f, v_0)
     flux[T > ex_time] = np.gradient(volume[T > ex_time], dt)
    
     return volume, flux, pressure
 
 
-def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: float, *, PEEP = 0.0, start_time = None,
-                       end_time = None) -> Tuple[np.ndarray, ...]:
+def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
     R: lung flux resistance
-    P: prefixed constant pressure to be applied
+    P: function representing the pressure to be applied
     PEEP: positive end-expiratory pressure
-    start_time: time when pressure pulse begins
-    end_time: time when pressure pulse ends
-    pause_lapsus: lenght of the time interval between inhalation and exhalation
-
     returns: volume, flux, and pressure for every instant of time
     """
-    if start_time is None:
-        start_time = T[len(T)//3]
-
-    if end_time is None:
-        end_time = T[len(T)//2]
-
-    p_func = np.vectorize( lambda t : P*(start_time <= t < end_time) )
-    pressure = p_func(T)
-    f = lambda t, v : (p_func(t) - PEEP - v/C)*1/R
-    volume = single_ruku4(T, f, PEEP)
+    P = np.vectorize(P)
+    pressure = P(T)
+    f = lambda t, v : (P(t) - v/C)*1/R
+    volume = single_ruku4(T, f, 0) # PEEP was deleted
     flux = np.gradient(volume, T)
     return volume, flux, pressure
-
-
-def sin_pressure_sim(T: np.ndarray, C: float, R: float, freq: float, Amp: float, PEEP = 0.0) -> Tuple[np.ndarray, ...]:
-    """
-        T: array containing the time samples
-        C: lung compliance
-        R: lung flux resistance
-        freq: respiratory frequency
-        Amp: sinusoidal amplitude
-        PEEP: positive end-expiratory pressure
-
-        returns: volume, flux, and pressure for every instant of time
-    """
-    p_func = np.vectorize( lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp )
-    pressure = p_func(T)
-
-    f = lambda t, v : (p_func(t) - PEEP - v/C)*1/R
-    volume = single_ruku4(T, f, 0)
-    flux = np.gradient(volume, T)
-    return volume, flux, pressure
-
 
 def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.ndarray) -> None:
     """
@@ -100,7 +67,7 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
         volume, flux, pressure: arrays representing each quantity for every instant T[i]
         plots volume, flux, and pressure against time
     """
-    fig, axs = plt.subplot_mosaic(
+    _, axs = plt.subplot_mosaic(
         [["top left", "right column"],
          ["middle left", "right column"],
          ["bottom left", "right column"]]
@@ -135,16 +102,34 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
         vol2, flux2, press2: arrays representing final volume, flux, and pressure for every instant T[i]
         plots initial and final volume, flux, and pressure against time, superimposed.
     """
-    fig, axs = plt.subplots(3, 1)
-    axs[2].set_xlabel('T')
-    axs[0].plot(T, vol1, '-b', T, vol2, '-.b')
-    axs[0].set_ylabel('Volume [ml]')
-    axs[1].plot(T, flux1, '-g', T, flux2, '-.g')
-    axs[1].set_ylabel("Flux [L/min]")
-    axs[2].plot(T, press1, color = 'deeppink')
-    axs[2].plot(T, press2, linestyle = '-.', color = 'deeppink')
-    axs[2].set_ylabel("Pressure [cmH2O]")
+    _, axs = plt.subplot_mosaic([['top left', 'right'],
+                                    ['medium left', 'right'], 
+                                    ['bottom left', 'right']])
+    # Comparative values display in right and left 
+    # Setting x axes as time
+    axs["bottom left"].set_xlabel('T')
+    axs["bottom left"].set_xlabel('T')
+    
+    # Plotting volumne comparison (time)
+    axs["top left"].plot(T, vol1, '-b', T, vol2, '-.b')
+    axs["top left"].set_ylabel('Volume [ml]')
 
+    # Plotting flux comparison (time)
+    axs["medium left"].plot(T, flux1, '-g', T, flux2, '-.g')
+    axs["medium left"].set_ylabel("Flux [L/min]")
+    
+    # Plotting pressure comparison (time)
+    axs["bottom left"].plot(T, press1, color = 'deeppink')
+    axs["bottom left"].plot(T, press2, linestyle = '-.', color = 'deeppink')
+    axs["bottom left"].set_ylabel("Pressure [cmH2O]")
+
+    # plotting volume vs flux (comparative) where the flux is considered to be positive inwards
+    axs["right"].plot(vol1, flux1, '-k', vol2, flux2, '-.k')
+    axs["right"].set_xlabel('Volume [ml]')
+    axs["right"].set_ylabel("Flux [L/min]")
+    
+    # Tight layout
+    plt.tight_layout()
     plt.show()
 
 def clamp_test():
@@ -153,23 +138,33 @@ def clamp_test():
     T = np.linspace(0, 15, 1500)
 
 
-    F = 5.0
+    F = lambda t: 5.0 * (T[len(T)//3] < t < T[len(T)//2])
     volume, flux, pressure = vol_clamp_sim(T, C, R, F)
     plot_VFP(T, volume, flux, pressure)
 
-    P = 3.0
+    # Test for Pressure pulse with a variable amplitude
+    P = lambda t: 3.0 * (T[len(T)//3] < t < T[len(T)//2])
+    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
+    plot_VFP(T, volume, flux, pressure)
+
+    # Test for a sinusoidal pressure with a variable freq and Amp 
+    Amp = 3.0
+    freq = 10/np.max(T)
+    P = lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp
     volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
     plot_VFP(T, volume, flux, pressure)
 
     Amp = 3.0
     freq = 10/np.max(T)
-    volume, flux, pressure = sin_pressure_sim(T, C, R, freq, Amp)
+    F = lambda t :  Amp*np.cos(2*np.pi*freq*t)+Amp
+    volume, flux, pressure = vol_clamp_sim(T, C, R, F)
     plot_VFP(T, volume, flux, pressure)
 
 
+
 def comp_test():
-    T = np.linspace(0, 3, 1500)
-    C = 15
+    T = np.linspace(0, 15, 1500)
+    C = 10
     R1 = 0.15
     R2 = 0.05
     clamp_val = 5.0
@@ -179,4 +174,4 @@ def comp_test():
 
 if __name__ == '__main__':
     clamp_test()
-    #comp_test()
+    # comp_test()
