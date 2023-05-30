@@ -90,7 +90,7 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     axs["right column"].set_xlabel('Volume')
     axs["right column"].set_ylabel("Flux")
     axs["right column"].axhline(y=0, color='k', linestyle='--')
-    h=5
+
     plt.show()
 
 
@@ -127,6 +127,7 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
     axs["right"].plot(vol1, flux1, '-k', vol2, flux2, '-.k')
     axs["right"].set_xlabel('Volume [ml]')
     axs["right"].set_ylabel("Flux [L/min]")
+    axs["right"].axhline(y=0, color='k', linestyle='--')
     
     # Tight layout
     plt.tight_layout()
@@ -136,7 +137,6 @@ def clamp_test():
     C = 100
     R = 0.01
     T = np.linspace(0, 15, 1500)
-
 
     F = lambda t: 5.0 * (T[len(T)//3] < t < T[len(T)//2])
     volume, flux, pressure = vol_clamp_sim(T, C, R, F)
@@ -160,18 +160,41 @@ def clamp_test():
     volume, flux, pressure = vol_clamp_sim(T, C, R, F)
     plot_VFP(T, volume, flux, pressure)
 
+    # Test for a sinusoidal pressure with a variable freq and Amp
+    Amp = 3.0
+    freq = 10/np.max(T)
+    P = lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp
+    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
+    plot_VFP(T, volume, flux, pressure)
+
+    # Test for a square wave
+    Amp = 3.0
+    freq = 10/np.max(T)
+    P = lambda t :  Amp*(np.sin(2*np.pi*freq*t) + (1/3)*np.sin(3*2*np.pi*freq*t) + (1/5)*np.sin(5*2*np.pi*freq*t))+Amp
+    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
+    plot_VFP(T, volume, flux, pressure)
+
+    # Test for a smooth pulse
+    t_mid = T[len(T)//2]
+    d = T[len(T)//8]
+    P = lambda t: 3 / (1 + ((t - t_mid)/d)**18)
+    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
+    plot_VFP(T, volume, flux, pressure)
 
 
 def comp_test():
+    C = 100
+    R = 0.01
     T = np.linspace(0, 15, 1500)
-    C = 10
-    R1 = 0.15
-    R2 = 0.05
-    clamp_val = 5.0
-    v1, f1, p1 = vol_clamp_sim(T, C, R1, clamp_val)
-    v2, f2, p2 = vol_clamp_sim(T, C, R2, clamp_val)
+
+    t_mid = T[len(T)//2]
+    d = T[len(T)//8]
+    P1 = lambda t: 3.0 / (1 + ((t - t_mid)/d)**18)
+    P2 = lambda t: 3.0 * (T[3*len(T)//8] < t < T[5*len(T)//8])
+    v1, f1, p1 = pressure_clamp_sim(T, C, R, P1)
+    v2, f2, p2 = pressure_clamp_sim(T, C, R, P2)
     comparative_plot(T, v1, v2, f1, f2, p1, p2)
 
 if __name__ == '__main__':
-    clamp_test()
-    # comp_test()
+    #clamp_test()
+    comp_test()
