@@ -61,13 +61,13 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable) -> Tuple[
     flux = np.gradient(volume, T)
     return volume, flux, pressure
 
-def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.ndarray) -> None:
+def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.ndarray, show=True) -> None:
     """
         T: array representing time
         volume, flux, pressure: arrays representing each quantity for every instant T[i]
         plots volume, flux, and pressure against time
     """
-    _, axs = plt.subplot_mosaic(
+    fig, axs = plt.subplot_mosaic(
         [["top left", "right column"],
          ["middle left", "right column"],
          ["bottom left", "right column"]]
@@ -91,18 +91,20 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     axs["right column"].set_ylabel("Flux")
     axs["right column"].axhline(y=0, color='k', linestyle='--')
 
-    plt.show()
+    if show:
+        plt.show()
 
+    return fig
 
 def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: np.ndarray,
-                     flux2: np.ndarray, press1: np.ndarray, press2: np.ndarray) -> None:
+                     flux2: np.ndarray, press1: np.ndarray, press2: np.ndarray, show=True) -> None:
     """
         T: array representing time
         vol1, flux1, press1: arrays representing initial volume, flux, and pressure for every instant T[i]
         vol2, flux2, press2: arrays representing final volume, flux, and pressure for every instant T[i]
         plots initial and final volume, flux, and pressure against time, superimposed.
     """
-    _, axs = plt.subplot_mosaic([['top left', 'right'],
+    fig, axs = plt.subplot_mosaic([['top left', 'right'],
                                     ['medium left', 'right'], 
                                     ['bottom left', 'right']])
     # Comparative values display in right and left 
@@ -131,7 +133,11 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
     
     # Tight layout
     plt.tight_layout()
-    plt.show()
+
+    if show:
+        plt.show()
+
+    return fig
 
 def clamp_test():
     C = 100
