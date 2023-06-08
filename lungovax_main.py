@@ -85,11 +85,11 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     axs["bottom left"].set_xlabel("Time [s]")
 
 
-    axs["right column"].plot(volume, flux, alpha=0.5, color='k', linestyle='-')
+    axs["right column"].plot(volume, flux, alpha=0.5, color='w', linestyle='-')
     axs["right column"].set_title("Flux vs. Volume")
     axs["right column"].set_xlabel('Volume')
     axs["right column"].set_ylabel("Flux")
-    axs["right column"].axhline(y=0, color='k', linestyle='--')
+    axs["right column"].axhline(y=0, color='w', linestyle='--')
 
     if show:
         plt.show()
@@ -112,7 +112,7 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
     axs["bottom left"].set_xlabel('T')
     axs["bottom left"].set_xlabel('T')
     
-    # Plotting volumne comparison (time)
+    # Plotting volume comparison (time)
     axs["top left"].plot(T, vol1, '-b', T, vol2, '-.b')
     axs["top left"].set_ylabel('Volume [ml]')
 
@@ -126,10 +126,10 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
     axs["bottom left"].set_ylabel("Pressure [cmH2O]")
 
     # plotting volume vs flux (comparative) where the flux is considered to be positive inwards
-    axs["right"].plot(vol1, flux1, '-k', vol2, flux2, '-.k')
+    axs["right"].plot(vol1, flux1, '-y', vol2, flux2, '-.y')
     axs["right"].set_xlabel('Volume [ml]')
     axs["right"].set_ylabel("Flux [L/min]")
-    axs["right"].axhline(y=0, color='k', linestyle='--')
+    axs["right"].axhline(y=0, color='y', linestyle='--')
     
     # Tight layout
     plt.tight_layout()
