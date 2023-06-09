@@ -1,5 +1,5 @@
-import numpy as np
-from matplotlib import pyplot as plt
+#import numpy as np
+#from matplotlib import pyplot as plt
 from typing import Tuple
 from ODE_solver import *
 from typing import Callable
@@ -24,9 +24,10 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: Callable , PEEP=0.0, *,
     if pause_lapsus is None:
         pause_lapsus = np.max(T)*0.1
 
-    # first, simulate a flux pulse for inhalation
+    # first, simulate inhalation
     F = np.vectorize(F)
     flux = F(T)
+    flux[T > end_time] = 0.0
 
     # integrate flux to find volume and compute pressure
     dt = T[1] - T[0]
@@ -38,14 +39,14 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: Callable , PEEP=0.0, *,
     pressure[T > ex_time] = PEEP
     f = lambda _, v : -(v/C)*1/R
     index = np.abs(T - ex_time).argmin()
-    v_0 = volume[index]  # at this point in the simulation, volume[-1] is the maximum stored volume
+    v_0 = volume[index]
     volume[T > ex_time] = single_ruku4(T[T > ex_time], f, v_0)
     flux[T > ex_time] = np.gradient(volume[T > ex_time], dt)
    
     return volume, flux, pressure
 
 
-def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable) -> Tuple[np.ndarray, ...]:
+def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable, PEEP=0.0) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
@@ -56,8 +57,8 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable) -> Tuple[
     """
     P = np.vectorize(P)
     pressure = P(T)
-    f = lambda t, v : (P(t) - v/C)*1/R
-    volume = single_ruku4(T, f, 0) # PEEP was deleted
+    f = lambda t, v : (P(t) - v/C - PEEP)*1/R
+    volume = single_ruku4(T, f, 0)
     flux = np.gradient(volume, T)
     return volume, flux, pressure
 
@@ -75,7 +76,6 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
 
     axs["top left"].plot(T, volume, color='blue')
     axs["top left"].set_ylabel('Volume [ml]')
-    axs["top left"].set_title("V, F, P vs. T")
 
     axs["middle left"].plot(T, flux, color='green')
     axs["middle left"].set_ylabel("Flux [L/min]")
@@ -85,11 +85,13 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     axs["bottom left"].set_xlabel("Time [s]")
 
 
-    axs["right column"].plot(volume, flux, alpha=0.5, color='w', linestyle='-')
-    axs["right column"].set_title("Flux vs. Volume")
-    axs["right column"].set_xlabel('Volume')
-    axs["right column"].set_ylabel("Flux")
-    axs["right column"].axhline(y=0, color='w', linestyle='--')
+    axs["right column"].plot(volume, flux, alpha=0.5, color='r', linestyle='-')
+    axs["right column"].set_xlabel("Volume [ml]")
+    axs["right column"].set_ylabel("Flux [L/min]")
+    axs["right column"].axhline(y=0, color='r', linestyle='--')
+
+    # Tight layout
+    plt.tight_layout()
 
     if show:
         plt.show()
@@ -125,10 +127,10 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
     axs["bottom left"].set_ylabel("Pressure [cmH2O]")
 
     # plotting volume vs flux (comparative) where the flux is considered to be positive inwards
-    axs["right"].plot(vol1, flux1, '-y', vol2, flux2, '-.y')
+    axs["right"].plot(vol1, flux1, '-r', vol2, flux2, '-.r')
     axs["right"].set_xlabel('Volume [ml]')
     axs["right"].set_ylabel("Flux [L/min]")
-    axs["right"].axhline(y=0, color='y', linestyle='--')
+    axs["right"].axhline(y=0, color='r', linestyle='--')
     
     # Tight layout
     plt.tight_layout()
@@ -188,18 +190,17 @@ def clamp_test():
 
 
 def comp_test():
-    C = 100
-    R = 0.01
+    C = 10
+    R1 = 0.1
+    R2 = 0.2
     T = np.linspace(0, 15, 1500)
 
-    t_mid = T[len(T)//2]
-    d = T[len(T)//8]
-    P1 = lambda t: 3.0 / (1 + ((t - t_mid)/d)**18)
-    P2 = lambda t: 3.0 * (T[3*len(T)//8] < t < T[5*len(T)//8])
-    v1, f1, p1 = pressure_clamp_sim(T, C, R, P1)
-    v2, f2, p2 = pressure_clamp_sim(T, C, R, P2)
+    t_start = T[len(T)//4]
+    F = lambda t: 3.0 * (t > t_start)
+    v1, f1, p1 = vol_clamp_sim(T, C, R1, F)
+    v2, f2, p2 = vol_clamp_sim(T, C, R2, F)
     comparative_plot(T, v1, v2, f1, f2, p1, p2)
 
 if __name__ == '__main__':
-    #clamp_test()
+    clamp_test()
     comp_test()
