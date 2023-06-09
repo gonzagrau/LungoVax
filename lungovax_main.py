@@ -109,8 +109,7 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
                                     ['bottom left', 'right']])
     # Comparative values display in right and left 
     # Setting x axes as time
-    axs["bottom left"].set_xlabel('T')
-    axs["bottom left"].set_xlabel('T')
+    axs["bottom left"].set_xlabel('Time [s]')
     
     # Plotting volume comparison (time)
     axs["top left"].plot(T, vol1, '-b', T, vol2, '-.b')

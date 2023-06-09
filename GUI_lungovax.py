@@ -3,6 +3,7 @@
 # from ODE_solver import *
 import customtkinter as ctk
 import webbrowser
+import numpy as np
 from lungovax_main import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -22,6 +23,10 @@ TITLE = 'LungoVax'
 TEM_BUT_TEXT = TEM_BUT_TEXT_ES
 REP_TEXT = REP_TEXT_ES
 
+# Generate empty axes graph
+empty_T = np.linspace(0, 5, 10)
+v, f, p = pressure_clamp_sim(T=np.linspace(0, 5, 10), C=1, R=1, P= lambda t : 0)
+EMPTY_GRAPHS_FIG = comparative_plot(empty_T, v, v, f, f, p, p, show=False)
 
 # Class definitions for UI
 
@@ -36,7 +41,7 @@ class MainFrame(ctk.CTkFrame):
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 
-        self.but_3EM = ctk.CTkButton(self, text=TEM_BUT_TEXT, command=self.buttom_3EM)
+        self.but_3EM = ctk.CTkButton(self, text=TEM_BUT_TEXT, command=self.button_3EM)
         self.but_3EM.grid(row=0, column=0, columnspan=2)
 
         self.version_str = ctk.CTkLabel(self, text=VER_STR)
@@ -46,12 +51,77 @@ class MainFrame(ctk.CTkFrame):
                                            fg_color='transparent')
         self.but_view_repo.grid(row=1, column=1)
 
-    def buttom_3EM(self):
+    def button_3EM(self):
         self.master.current_frame = TEMFrame(self.master)
 
 
 class TEMFrame(ctk.CTkFrame):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=3)
+
+        self.sim_params = SimParamsFrame(self)
+        self.sim_params.grid(row=0, column=0, sticky='nsew')
+
+        self.graph_frame = GraphFrame(self)
+        self.graph_frame.grid(row=0, column=1, sticky='nsew')
+
+
+class SimParamsFrame(ctk.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=8)
+        self.rowconfigure(2, weight=2)
+        self.columnconfigure(0, weight=1)
+
+        # The following label, alongside with the first row of the grid,
+        # are here just to show the other developers my layout ideas
+        self.lbl = ctk.CTkLabel(self, text='PARAMS FRAME')
+        self.lbl.grid(row=0, column=0)
+
+        self.tabs = ParamsTabView(self)
+        self.tabs.fill_tab("linestyle=-")
+        self.tabs.fill_tab("linestyle=-.")
+        self.tabs.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+
+        self.run_button = ctk.CTkButton(master=self,
+                                        text='Run simulation',
+                                        command=self.run_sim,
+                                        corner_radius=15)
+        self.run_button.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
+
+    def get_params(self):
+        pass
+
+    def run_sim(self):
+        pass
+
+
+class ParamsTabView(ctk.CTkTabview):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.add("linestyle=-")
+        self.add("linestyle=-.")
+
+    def fill_tab(self, tabname):
+        self.tab_lbl = ctk.CTkLabel(master=self.tab(tabname), text=f"tab to set params. for simulation with {tabname}")
+        self.tab_lbl.grid(row=0, column=0, padx=20, pady=10)
+
+
+class GraphFrame(ctk.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        # The following label is here just to show the other developers my layout ideas
+        # The only widget in this frame should be the matplotlib figure
+        self.lbl = ctk.CTkLabel(self, text='GRAPH FRAME')
+        self.lbl.pack()
+        empty_graphs = FigureCanvasTkAgg(EMPTY_GRAPHS_FIG, self)
+        empty_graphs.get_tk_widget().pack(expand=True, fill=ctk.BOTH)
+
 
 
 class MainWindow(ctk.CTk):
@@ -86,9 +156,11 @@ class MainWindow(ctk.CTk):
 
 
 def main():
-    # set GUI
+
     root = MainWindow()
+
     '''
+    root = ctk.CTk()
     frm_params = ctk.CTkFrame(master=root,
                                width=200,
                                height=200,
@@ -114,9 +186,6 @@ def main():
                               corner_radius=10)
     frm_graphs.pack()
     def run_sim():
-        for widget in frm_graphs.winfo_children():
-            widget.destroy()
-
         t_f = float(ents[0].get())
         C1 = float(ents[1].get())
         C2 = float(ents[2].get())
@@ -130,8 +199,11 @@ def main():
 
         v1, f1, p1 = pressure_clamp_sim(T, C1, R1, P)
         v2, f2, p2 = pressure_clamp_sim(T, C2, R2, P)
-
         fig = comparative_plot(T, v1, v2, f1, f2, p1, p2, show=False)
+
+        for widget in frm_graphs.winfo_children():
+            widget.destroy()
+
         graphs = FigureCanvasTkAgg(fig, frm_graphs)
         graphs.get_tk_widget().pack(expand=True, fill=ctk.BOTH)
 
@@ -139,8 +211,8 @@ def main():
 
     btn_simulation = ctk.CTkButton(root, text='Run simulation', corner_radius=10, command=run_sim)
     btn_simulation.pack()
-
     '''
+
     root.mainloop()
 
 
