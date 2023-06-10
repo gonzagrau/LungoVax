@@ -3,7 +3,6 @@
 # from ODE_solver import *
 import customtkinter as ctk
 import webbrowser
-import numpy as np
 from lungovax_main import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -86,19 +85,29 @@ class AssistedRespirationParametersFrame(ctk.CTkFrame):
         self.rowconfigure(2, weight=2)
         self.columnconfigure(0, weight=1)
 
-        # The following label, alongside with the first row of the grid,
-        # are here just to show the other developers my layout ideas
-        self.lbl = ctk.CTkLabel(self, text=ASSISTED_SIMULATION_PARAMETERS_FRAME_TEXT)
-        self.lbl.grid(row=0, column=0)
+        self.timeEntry = ctk.CTkEntry(master=self,
+                                      placeholder_text='Tiempo de simulacion')
+        self.timeEntry.grid(row=0, column=0, sticky='nsw', padx=5, pady=5)
 
-        self.controller = AssistedSimulationParametersControllerFrame(self)
+        self.controller = AssistedSimulationParametersControllerTabview(self)
         self.controller.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 
-        self.run_button = ctk.CTkButton(master=self,
-                                        text='Run simulation',
+
+        self.secondSimCheckBox = ctk.CTkCheckBox(self,
+                                                 text="Segunda simulacion",
+                                                 command= self.toggle_second_sim)
+        self.secondSimCheckBox.grid(row=0, column=0, sticky='nse', padx=15, pady=5)
+
+        self.runButton = ctk.CTkButton(master=self,
+                                        text="Simular",
                                         command=self.run_sim,
                                         corner_radius=15)
-        self.run_button.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
+
+
+        self.runButton.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
+
+    def toggle_second_sim(self):
+        self.controller.toggle_tab("Sim. 2", self.secondSimCheckBox.get())
 
     def get_params(self):
         pass
@@ -107,13 +116,32 @@ class AssistedRespirationParametersFrame(ctk.CTkFrame):
         pass
 
 
-class AssistedSimulationParametersControllerFrame(ctk.CTkTabview):
+class AssistedSimulationParametersControllerTabview(ctk.CTkTabview):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=5)
-        self.columnconfigure(0, weight=1)
+        self.add("Sim. 1")
+        self.configure_tab("Sim. 1")
 
+    def configure_tab(self, tab_name):
+        """
+        In this method, we set the layout for getting parameters
+        This is automatically called whenever a new tab is created
+        """
+        tab = self.tab(tab_name)
+        lbl = ctk.CTkLabel(master=tab, text=f"This is a tab named {tab_name}")
+        lbl.pack()
+
+    def toggle_tab(self, tab_name, enabled):
+        try:
+            if enabled:
+                self.add(tab_name)
+                self.configure_tab(tab_name)
+            else:
+                self.delete(tab_name)
+        except ValueError:
+            # either tried creating an already existing tab or deleting
+            # non-existing one. Either way, everything should stay as is
+            pass
 
 
 
