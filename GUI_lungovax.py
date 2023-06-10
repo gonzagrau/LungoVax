@@ -31,6 +31,37 @@ EMPTY_GRAPHS_FIG = lung.comparative_plot(empty_T, v, v, f, f, p, p, show=False)
 
 
 # Class definitions for UI
+class MainWindow(ctk.CTk):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title(TITLE)
+        self.iconbitmap("lung.ico")
+        self.geometry('900x600')
+
+        # self.resizable(False, False)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        # Setting properties
+        self.current_frame = MainFrame(self)
+        # self.state('zoomed') # This is not working
+
+    @property
+    def current_frame(self):
+        return self._current_frame
+
+    @current_frame.setter
+    def current_frame(self, frame):
+        try:
+            self._current_frame.destroy()
+        except AttributeError:
+            pass
+        self._current_frame = frame
+        self._current_frame.grid(row=0, column=0, sticky="nsew")
+
+    @current_frame.getter
+    def current_frame(self):
+        return self._current_frame
 
 class MainFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -61,21 +92,29 @@ class MainFrame(ctk.CTkFrame):
 
 
 class AssistedRespirationFrame(ctk.CTkFrame):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.master = master
 
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=3)
 
-        self.sim_params = AssistedRespirationParametersFrame(self)
+        self.sim_params = AssistedRespirationInputsFrame(self)
         self.sim_params.grid(row=0, column=0, sticky='nsew')
 
         self.graph_frame = AssistedRespirationGraphFrame(self)
         self.graph_frame.grid(row=0, column=1, sticky='nsew')
 
+    def update_graph(self, fig):
+        self.graph_frame.plot_simulation(fig)
 
-class AssistedRespirationParametersFrame(ctk.CTkFrame):
+    def go_back_to_main_frame(self):
+        self.master.current_frame = MainFrame(self.master)
+
+
+class AssistedRespirationInputsFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.master = master
@@ -121,12 +160,11 @@ class AssistedRespirationParametersFrame(ctk.CTkFrame):
         self.clamp_menu.pack(expand=True, fill=ctk.X)
         # Run Button
         self.runButton = ctk.CTkButton(master=self,
-                                        text="Simular",
-                                        command=self.run_sim,
-                                        corner_radius=15)
-
-
-        self.runButton.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
+                                       text="Simular",
+                                       command=self.run_sim,
+                                       corner_radius=15,
+                                       font=("Roboto", 20))
+        self.runButton.pack(expand=True, fill=ctk.X)
 
     def toggle_second_sim(self):
         self.controller.toggle_tab("Sim. 2", self.secondSimCheckBox.get())
@@ -154,7 +192,7 @@ class AssistedRespirationParametersFrame(ctk.CTkFrame):
         self.master.update_graph(fig)
 
 
-class AssistedSimulationParametersControllerTabview(ctk.CTkTabview):
+class ParametersControllerTabview(ctk.CTkTabview):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.tab_list = ['Sim. 1']
@@ -167,8 +205,50 @@ class AssistedSimulationParametersControllerTabview(ctk.CTkTabview):
         This is automatically called whenever a new tab is created
         """
         tab = self.tab(tab_name)
-        lbl = ctk.CTkLabel(master=tab, text=f"This is a tab named {tab_name}")
-        lbl.pack()
+
+        # Model Toggler
+        tab.switch_var = ctk.BooleanVar(value=True)
+
+        def toggle_cap2():
+            enabled = tab.switch_var.get()
+            if enabled:
+                tab.slider_cap2.slider.configure(state='normal')
+                tab.slider_cap2.slider.configure(button_color=("#3a7ebf", "#1f538d"))
+            else:
+                tab.slider_cap2.slider.configure(state='disabled')
+                tab.slider_cap2.slider.configure(button_color='gray')
+
+        tab.switch_cap2 = ctk.CTkSwitch(master=tab, text="Añadir tercer elemento",
+                                         variable=tab.switch_var, command=toggle_cap2,
+                                         onvalue=True, offvalue=False)
+        tab.switch_cap2.pack(expand=True, fill=ctk.BOTH)
+
+        # C1 slider
+        tab.slider_cap1 = ParameterSlider(tab, 'C1', 1, 2)
+        tab.slider_cap1.pack(expand=True, fill=ctk.BOTH)
+
+        # C2 Slider
+        tab.slider_cap2 = ParameterSlider(tab, 'C2', 1, 2)
+        tab.slider_cap2.pack(expand=True, fill=ctk.BOTH)
+
+        # Resistance
+        tab.slider_resistance = ParameterSlider(tab, 'R', 1, 2)
+        tab.slider_resistance.pack(expand=True, fill=ctk.BOTH)
+
+
+    def get_all_values(self, tab_name):
+        capacitance_1 = getattr(self.tab(tab_name), 'slider_cap1').get()
+        capacitance_2 = getattr(self.tab(tab_name), 'slider_cap2').get()
+        resistance = getattr(self.tab(tab_name), 'slider_resistance').get()
+
+        third_element = getattr(self.tab(tab_name), 'switch_var').get()
+        if third_element:
+            capacitance = capacitance_1*capacitance_2 / (capacitance_1 + capacitance_2)
+        else:
+            capacitance = capacitance_1
+
+        return capacitance, resistance
+
 
     def toggle_tab(self, tab_name, enabled):
         try:
@@ -183,7 +263,6 @@ class AssistedSimulationParametersControllerTabview(ctk.CTkTabview):
             # either tried creating an already existing tab or deleting
             # non-existing one. Either way, everything should stay as is
             pass
-
 
 
 class ParameterSlider(ctk.CTkFrame):

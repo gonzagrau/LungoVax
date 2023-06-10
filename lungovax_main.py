@@ -89,7 +89,7 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     axs["right column"].plot(volume, flux, alpha=0.5, color='r', linestyle='-')
     axs["right column"].set_xlabel("Volume [ml]")
     axs["right column"].set_ylabel("Flux [L/min]")
-    axs["right column"].axhline(y=0, color='r', linestyle='--')
+    axs["right column"].axhline(y=0, color='y', linestyle='-')
 
     # Tight layout
     plt.tight_layout()
@@ -131,7 +131,7 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
     axs["right"].plot(vol1, flux1, '-r', vol2, flux2, '-.r')
     axs["right"].set_xlabel('Volume [ml]')
     axs["right"].set_ylabel("Flux [L/min]")
-    axs["right"].axhline(y=0, color='r', linestyle='--')
+    axs["right"].axhline(y=0, color='y', linestyle='-')
     
     # Tight layout
     plt.tight_layout()
