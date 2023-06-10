@@ -4,14 +4,15 @@ from typing import Tuple
 from ODE_solver import *
 from typing import Callable
 
-def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: Callable , PEEP=0.0, *,
+
+def vol_clamp_sim(time_vector: np.ndarray, capacitance: float, resistance: float, flux: Callable, peep=0.0, *,
                   pause_lapsus=None, end_time=None) -> Tuple[np.ndarray, ...]:
     """
-    T: array containing the time samples
-    C: lung compliance
-    R: lung flux resistance
-    F: flux to be applied before the exhalation begins
-    PEEP: positive end-expiratory pressure
+    Time: array containing the time samples
+    capacitance: lung compliance
+    resistance: lung flux resistance
+    flux: flux to be applied before the exhalation begins
+    peep: positive end-expiratory pressure
     end_time: time when inhalation ends
     pause_lapsus: lenght of the time interval between inhalation and exhalation
 
@@ -19,29 +20,29 @@ def vol_clamp_sim(T: np.ndarray, C: float, R: float, F: Callable , PEEP=0.0, *,
     """
 
     if end_time is None:
-        end_time = T[len(T) // 2]
+        end_time = time_vector[len(time_vector) // 2]
 
     if pause_lapsus is None:
-        pause_lapsus = np.max(T)*0.1
+        pause_lapsus = np.max(time_vector) * 0.1
 
     # first, simulate inhalation
-    F = np.vectorize(F)
-    flux = F(T)
-    flux[T > end_time] = 0.0
+    flux = np.vectorize(flux)
+    flux = flux(time_vector)
+    flux[time_vector > end_time] = 0.0
 
     # integrate flux to find volume and compute pressure
-    dt = T[1] - T[0]
+    dt = time_vector[1] - time_vector[0]
     volume = np.cumsum(flux)*dt
-    pressure =  R * flux + volume / C + PEEP
+    pressure = resistance * flux + volume / capacitance + peep
 
     # after the pause lapsus, simulate exhalation
-    ex_time= end_time + pause_lapsus
-    pressure[T > ex_time] = PEEP
-    f = lambda _, v : -(v/C)*1/R
-    index = np.abs(T - ex_time).argmin()
+    ex_time = end_time + pause_lapsus
+    pressure[time_vector > ex_time] = peep
+    index = np.abs(time_vector - ex_time).argmin()
     v_0 = volume[index]
-    volume[T > ex_time] = single_ruku4(T[T > ex_time], f, v_0)
-    flux[T > ex_time] = np.gradient(volume[T > ex_time], dt)
+    volume[time_vector > ex_time] = single_ruku4(time_vector[time_vector > ex_time],
+                                                 lambda _, v: -(v / capacitance) * 1 / resistance, v_0)
+    flux[time_vector > ex_time] = np.gradient(volume[time_vector > ex_time], dt)
    
     return volume, flux, pressure
 
@@ -61,6 +62,7 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable, PEEP=0.0)
     volume = single_ruku4(T, f, 0)
     flux = np.gradient(volume, T)
     return volume, flux, pressure
+
 
 def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.ndarray, show=True) -> None:
     """
@@ -84,7 +86,6 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     axs["bottom left"].set_ylabel("Pressure [cmH2O]")
     axs["bottom left"].set_xlabel("Time [s]")
 
-
     axs["right column"].plot(volume, flux, alpha=0.5, color='r', linestyle='-')
     axs["right column"].set_xlabel("Volume [ml]")
     axs["right column"].set_ylabel("Flux [L/min]")
@@ -95,8 +96,8 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
 
     if show:
         plt.show()
-
     return fig
+
 
 def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: np.ndarray,
                      flux2: np.ndarray, press1: np.ndarray, press2: np.ndarray, show=True) -> None:
@@ -137,7 +138,6 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
 
     if show:
         plt.show()
-
     return fig
 
 def clamp_test():
