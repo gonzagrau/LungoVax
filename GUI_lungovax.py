@@ -6,29 +6,30 @@ import webbrowser
 import lungovax_main as lung
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-# Config statements
-plt.style.use('dark_background')
-ctk.set_appearance_mode("dark")
+# Default appearence mode
+ctk.set_appearance_mode('system')
+if ctk.get_appearance_mode() == 'Dark':
+    plt.style.use('dark_background')
+else:
+    plt.style.use('default')
 
 # CONSTANTS
 # WORDS: Remember the intention is to work later with .xml file with translations, so we can change between EN/ES
-ASSISTED_SIMULATION_BUTTON_TEXT_ES = 'Simulación de Respiración Asistida'
+ASSISTED_SIMULATION_BUTTON_TEXT_ES = 'Simulación de\nRespiración Asistida'
 ASSISTED_SIMULATION_PARAMETERS_FRAME_TEXT_ES = 'PARÁMETROS'
 REP_TEXT_ES = 'Ver en GitHub'
-VER_STR = '1.0'
+VER_STR = 'Version 1.0'
 REP_URL = r'https://github.com/gonzagrau/LungoVax'
 TITLE = 'LungoVax'
+DARK_MODE_TEXT_ES = 'Modo oscuro'
+LIGHT_MODE_TEXT_ES = 'Modo claro'
 
 # Language: for now just manually set parameters
 ASSISTED_SIMULATION_BUTTON_TEXT = ASSISTED_SIMULATION_BUTTON_TEXT_ES
 REP_TEXT = REP_TEXT_ES
 ASSISTED_SIMULATION_PARAMETERS_FRAME_TEXT = ASSISTED_SIMULATION_PARAMETERS_FRAME_TEXT_ES
-
-# Generate empty axes graph
-empty_T = np.linspace(0, 5, 10)
-v, f, p = lung.pressure_clamp_sim(T=np.linspace(0, 5, 10), C=1, R=1, P=lambda t: 0)
-EMPTY_GRAPHS_FIG = lung.comparative_plot(empty_T, v, v, f, f, p, p, show=False)
-
+DARK_MODE_TEXT = DARK_MODE_TEXT_ES
+LIGHT_MODE_TEXT = LIGHT_MODE_TEXT_ES
 
 # Class definitions for UI
 class MainWindow(ctk.CTk):
@@ -73,21 +74,50 @@ class MainFrame(ctk.CTkFrame):
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
+        self.columnconfigure(2, weight=1)
 
 
         self.button_assisted_simulation = ctk.CTkButton(self, text=ASSISTED_SIMULATION_BUTTON_TEXT,
                                                         command=self.button_assisted_simulation_action)
-        self.button_assisted_simulation.grid(row=0, column=0, columnspan=2)
+        self.button_assisted_simulation.grid(row=0, column=1, sticky='ew')
 
         self.version_str = ctk.CTkLabel(self, text=VER_STR)
-        self.version_str.grid(row=2, column=0)
+        self.version_str.grid(row=2, column=0, sticky='ew')
 
-        self.but_view_repo = ctk.CTkButton(self, text=REP_TEXT, command=lambda: webbrowser.open_new(REP_URL),
+        self.mode_switch_var = ctk.BooleanVar(self, True)
+        self.mode_switch = ctk.CTkSwitch(self,
+                                         variable=self.mode_switch_var,
+                                         command=self.mode_switch_action,
+                                         onvalue=True, offvalue=False)
+        print(ctk.get_appearance_mode())
+        if ctk.get_appearance_mode() == 'Dark':
+            self.mode_switch.deselect()
+            self.mode_switch.configure(text=DARK_MODE_TEXT)
+        else:
+            self.mode_switch.select()
+            self.mode_switch.configure(text=LIGHT_MODE_TEXT)
+        self.mode_switch.grid(row=2, column=1)
+
+        self.but_view_repo = ctk.CTkButton(self,
+                                           text=REP_TEXT,
+                                           text_color=('black', 'white'),
+                                           command=lambda: webbrowser.open_new(REP_URL),
                                            fg_color='transparent')
-        self.but_view_repo.grid(row=2, column=1)
+        self.but_view_repo.grid(row=2, column=2)
 
     def button_assisted_simulation_action(self):
         self.master.current_frame = AssistedRespirationFrame(self.master)
+
+    def mode_switch_action(self):
+        light = self.mode_switch_var.get()
+        if light:
+            ctk.set_appearance_mode('light')
+            plt.style.use('default')
+            self.mode_switch.configure(text=LIGHT_MODE_TEXT)
+        else:
+            ctk.set_appearance_mode("dark")
+            plt.style.use('dark_background')
+            self.mode_switch.configure(text=DARK_MODE_TEXT)
 
 
 
@@ -181,7 +211,7 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
     def run_sim(self):
         capacitances, resistances = self.get_params()
         time_vector = np.linspace(0, 15, 1500)
-        P_func = lambda t: 3.0 * (time_vector[len(time_vector)//3] < t < time_vector[len(time_vector)//2])
+        P_func = lambda t: 20.0 * (time_vector[2*len(time_vector)//7] < t < time_vector[4*len(time_vector)//7])
         if len(capacitances) == 1:
             volume, flux, pressure = lung.pressure_clamp_sim(time_vector, capacitances[0], resistances[0], P_func)
             fig = lung.plot_VFP(time_vector, volume, flux, pressure, False)
@@ -224,15 +254,15 @@ class ParametersControllerTabview(ctk.CTkTabview):
         tab.switch_cap2.pack(expand=True, fill=ctk.BOTH)
 
         # C1 slider
-        tab.slider_cap1 = ParameterSlider(tab, 'C1', 1, 2)
+        tab.slider_cap1 = ParameterSlider(tab, 'C1', 20, 50)
         tab.slider_cap1.pack(expand=True, fill=ctk.BOTH)
 
         # C2 Slider
-        tab.slider_cap2 = ParameterSlider(tab, 'C2', 1, 2)
+        tab.slider_cap2 = ParameterSlider(tab, 'C2', 20, 50)
         tab.slider_cap2.pack(expand=True, fill=ctk.BOTH)
 
         # Resistance
-        tab.slider_resistance = ParameterSlider(tab, 'R', 1, 2)
+        tab.slider_resistance = ParameterSlider(tab, 'R', 0.01, 0.1)
         tab.slider_resistance.pack(expand=True, fill=ctk.BOTH)
 
 
@@ -290,7 +320,7 @@ class ParameterSlider(ctk.CTkFrame):
         self.slider.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
 
         # Initial display
-        self.value.configure(text=f'{self.slider.get()}')
+        self.value.configure(text=f'{self.slider.get():.2f}')
 
     def get(self):
         return self.slider.get()
@@ -301,7 +331,14 @@ class AssistedRespirationGraphFrame(ctk.CTkFrame):
         super().__init__(master, **kwargs)
         # The following label is here just to show the other developers my layout ideas
         # The only widget in this frame should be the matplotlib figure
-        empty_graphs = FigureCanvasTkAgg(EMPTY_GRAPHS_FIG, self)
+        self.set_intial_graph()
+
+    def set_intial_graph(self):
+        # Generate empty axes graph
+        empty_T = np.linspace(0, 5, 10)
+        v, f, p = lung.pressure_clamp_sim(T=np.linspace(0, 5, 10), C=1, R=1, P=lambda t: 0)
+        empty_graphs_fig = lung.comparative_plot(empty_T, v, v, f, f, p, p, show=False)
+        empty_graphs = FigureCanvasTkAgg(empty_graphs_fig, self)
         empty_graphs.get_tk_widget().pack(expand=True, fill=ctk.BOTH)
 
     def plot_simulation(self, updated_figure):
