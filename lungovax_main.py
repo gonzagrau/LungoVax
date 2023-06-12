@@ -1,6 +1,9 @@
 #import numpy as np
 #from matplotlib import pyplot as plt
 from typing import Tuple
+
+import numpy as np
+
 from ODE_solver import *
 from typing import Callable
 
@@ -141,66 +144,63 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
     return fig
 
 def clamp_test():
+    def run_both_tests(T_test, C_test, R_test, func, end_time=None, pause_lapsus=None):
+        volume, flux, pressure = pressure_clamp_sim(T_test, C_test, R_test, func)
+        plot_VFP(T, volume, flux, pressure)
+
+        volume, flux, pressure = vol_clamp_sim(T_test, C_test, R_test, func,
+                                               end_time=end_time,
+                                               pause_lapsus=pause_lapsus)
+        plot_VFP(T, volume, flux, pressure)
+
+    T = np.linspace(0, 15, 1500)
     C = 100
     R = 0.01
-    T = np.linspace(0, 15, 1500)
 
-    F = lambda t: 5.0 * (T[len(T)//3] < t < T[len(T)//2])
-    volume, flux, pressure = vol_clamp_sim(T, C, R, F)
-    plot_VFP(T, volume, flux, pressure)
-
-    # Test for Pressure pulse with a variable amplitude
-    P = lambda t: 3.0 * (T[len(T)//3] < t < T[len(T)//2])
-    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
-    plot_VFP(T, volume, flux, pressure)
-
-    # Test for a sinusoidal pressure with a variable freq and Amp 
-    Amp = 3.0
-    freq = 10/np.max(T)
-    P = lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp
-    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
-    plot_VFP(T, volume, flux, pressure)
-
-    Amp = 3.0
-    freq = 10/np.max(T)
-    F = lambda t :  Amp*np.cos(2*np.pi*freq*t)+Amp
-    volume, flux, pressure = vol_clamp_sim(T, C, R, F)
-    plot_VFP(T, volume, flux, pressure)
+    # Test for hard pulse with a variable amplitude
+    Clamp_func = lambda t: 5.0 * (T[len(T)//3] < t < T[len(T)//2])
+    run_both_tests(T, C, R, Clamp_func)
 
     # Test for a sinusoidal pressure with a variable freq and Amp
     Amp = 3.0
     freq = 10/np.max(T)
-    P = lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp
-    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
-    plot_VFP(T, volume, flux, pressure)
+    Clamp_func = lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp
+    run_both_tests(T, C, R, Clamp_func)
 
-    # Test for a square wave
+    # Test for a square Pressure wave
     Amp = 3.0
-    freq = 10/np.max(T)
-    P = lambda t :  Amp*(np.sin(2*np.pi*freq*t) + (1/3)*np.sin(3*2*np.pi*freq*t) + (1/5)*np.sin(5*2*np.pi*freq*t))+Amp
-    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
-    plot_VFP(T, volume, flux, pressure)
+    freq = 4/np.max(T)
+    Clamp_func = lambda t :  Amp*(np.sin(2*np.pi*freq*t) +
+                                  (1/3)*np.sin(3*2*np.pi*freq*t) +
+                                  (1/5)*np.sin(5*2*np.pi*freq*t) +
+                                  (1/7)*np.sin(7*2*np.pi*freq*t) +
+                                  (1/9)*np.sin(9*2*np.pi*freq*t)) + Amp
+    run_both_tests(T, C, R, Clamp_func)
 
     # Test for a smooth pulse
-    t_mid = T[len(T)//2]
-    d = T[len(T)//8]
-    P = lambda t: 3 / (1 + ((t - t_mid)/d)**18)
-    volume, flux, pressure = pressure_clamp_sim(T, C, R, P)
-    plot_VFP(T, volume, flux, pressure)
+    t_mid = 5.0
+    d = 4.0
+    Clamp_func = lambda t: 3 / np.sqrt(1 + ((t - t_mid)/(d/2))**18)
+    pause = 2.0
+    end_time = t_mid + d/2 + pause
+    run_both_tests(T, C, R, Clamp_func, end_time=end_time, pause_lapsus=pause)
 
 
 def comp_test():
     C = 10
-    R1 = 0.1
-    R2 = 0.2
+    R = 0.1
     T = np.linspace(0, 15, 1500)
 
-    t_start = T[len(T)//4]
-    F = lambda t: 3.0 * (t > t_start)
-    v1, f1, p1 = vol_clamp_sim(T, C, R1, F)
-    v2, f2, p2 = vol_clamp_sim(T, C, R2, F)
+    d = T[len(T)//4]
+    t_mid = T[len(T)//3]
+    softness = 30
+    pause = 3.0
+    F_hard = lambda t: 3.0 * int(np.abs((t-t_mid)/d) < 1/2)
+    F_soft = lambda t : 3.0 / np.sqrt(1 + np.power((t-t_mid)/(d/2), softness))
+    v1, f1, p1 = pressure_clamp_sim(T, C, R, F_hard)
+    v2, f2, p2 = pressure_clamp_sim(T, C, R, F_soft)
     comparative_plot(T, v1, v2, f1, f2, p1, p2)
 
 if __name__ == '__main__':
-    clamp_test()
-    comp_test()
+   clamp_test()
+   comp_test()

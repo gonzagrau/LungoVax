@@ -89,7 +89,6 @@ class MainFrame(ctk.CTkFrame):
                                          variable=self.mode_switch_var,
                                          command=self.mode_switch_action,
                                          onvalue=True, offvalue=False)
-        print(ctk.get_appearance_mode())
         if ctk.get_appearance_mode() == 'Dark':
             self.mode_switch.deselect()
             self.mode_switch.configure(text=DARK_MODE_TEXT)
