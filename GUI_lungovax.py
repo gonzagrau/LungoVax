@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-# from ODE_solver import *
 import customtkinter as ctk
 import webbrowser
 import lungovax_main as lung
@@ -15,31 +14,27 @@ if ctk.get_appearance_mode() == 'Dark':
 else:
     plt.style.use('default')
 
-# CONSTANTS
-# WORDS: Remember the intention is to work later with .xml file with translations, so we can change between EN/ES
-ASSISTED_SIMULATION_BUTTON_TEXT_ES = 'Simulación de\nRespiración Asistida'
-ASSISTED_SIMULATION_PARAMETERS_FRAME_TEXT_ES = 'PARÁMETROS'
-REP_TEXT_ES = 'Ver en GitHub'
-VER_STR = 'Version 1.0'
+# IMPORTANT CONSTANTS
+ICON_PATH = 'lung.ico'
+INITIAL_RESOLUTION = '1200x700'
+LOGO_PATH = 'logo.png'
 REP_URL = r'https://github.com/gonzagrau/LungoVax'
 TITLE = 'LungoVax'
-DARK_MODE_TEXT_ES = 'Modo oscuro'
-LIGHT_MODE_TEXT_ES = 'Modo claro'
 
-# Language: for now just manually set parameters
-ASSISTED_SIMULATION_BUTTON_TEXT = ASSISTED_SIMULATION_BUTTON_TEXT_ES
-REP_TEXT = REP_TEXT_ES
-ASSISTED_SIMULATION_PARAMETERS_FRAME_TEXT = ASSISTED_SIMULATION_PARAMETERS_FRAME_TEXT_ES
-DARK_MODE_TEXT = DARK_MODE_TEXT_ES
-LIGHT_MODE_TEXT = LIGHT_MODE_TEXT_ES
+# Shortcup for fast padying
+padding = {'padx': 5, 'pady':5}
+
+# Displayed text is contained in proper language packages
+LANG_PACK = lpm.get_lang_package()
+
 
 # Class definitions for UI
 class MainWindow(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title(TITLE)
-        self.iconbitmap("lung.ico")
-        self.geometry('900x600')
+        self.iconbitmap(ICON_PATH)
+        self.geometry(INITIAL_RESOLUTION)
 
         # self.resizable(False, False)
         self.grid_columnconfigure(0, weight=1)
@@ -66,6 +61,7 @@ class MainWindow(ctk.CTk):
     def current_frame(self):
         return self._current_frame
 
+
 class MainFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
@@ -90,11 +86,11 @@ class MainFrame(ctk.CTkFrame):
                                          hover=False)
         self.logo_button.grid(row=0, column=1, sticky='nsew')
 
-        self.button_assisted_simulation = ctk.CTkButton(self, text=ASSISTED_SIMULATION_BUTTON_TEXT,
+        self.button_assisted_simulation = ctk.CTkButton(self, text=LANG_PACK['ASSISTED_SIMULATION_BUTTON_TEXT'],
                                                         command=self.button_assisted_simulation_action)
         self.button_assisted_simulation.grid(row=1, column=1, sticky='ew')
 
-        self.version_str = ctk.CTkLabel(self, text=VER_STR)
+        self.version_str = ctk.CTkLabel(self, text=LANG_PACK['VER_STR'])
         self.version_str.grid(row=2, column=0, sticky='ew')
 
         self.mode_switch_var = ctk.BooleanVar(self, True)
@@ -104,14 +100,14 @@ class MainFrame(ctk.CTkFrame):
                                          onvalue=True, offvalue=False)
         if ctk.get_appearance_mode() == 'Dark':
             self.mode_switch.deselect()
-            self.mode_switch.configure(text=DARK_MODE_TEXT)
+            self.mode_switch.configure(text=LANG_PACK['LIGHT_MODE_TEXT'])
         else:
             self.mode_switch.select()
-            self.mode_switch.configure(text=LIGHT_MODE_TEXT)
+            self.mode_switch.configure(text=LANG_PACK['LIGHT_MODE_TEXT'])
         self.mode_switch.grid(row=2, column=1)
 
         self.but_view_repo = ctk.CTkButton(self,
-                                           text=REP_TEXT,
+                                           text=LANG_PACK['REP_TEXT'],
                                            text_color=('black', 'white'),
                                            command=lambda: webbrowser.open_new(REP_URL),
                                            fg_color='transparent')
@@ -125,12 +121,11 @@ class MainFrame(ctk.CTkFrame):
         if light:
             ctk.set_appearance_mode('light')
             plt.style.use('default')
-            self.mode_switch.configure(text=LIGHT_MODE_TEXT)
+            self.mode_switch.configure(text=LANG_PACK['LIGHT_MODE_TEXT'])
         else:
             ctk.set_appearance_mode("dark")
             plt.style.use('dark_background')
-            self.mode_switch.configure(text=DARK_MODE_TEXT)
-
+            self.mode_switch.configure(text=LANG_PACK['DARK_MODE_TEXT'])
 
 
 class AssistedRespirationFrame(ctk.CTkFrame):
@@ -163,9 +158,9 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
 
         # Top Frame
         self.topFrame = ctk.CTkFrame(master=self, fg_color='transparent')
-        self.topFrame.pack(expand=True, side=ctk.TOP)
+        self.topFrame.pack(expand=True, fill=ctk.X)
         self.topFrame.columnconfigure(0, weight=1)
-        self.topFrame.columnconfigure(1, weight=5)
+        self.topFrame.columnconfigure(1, weight=9)
 
         # Go Back Button
         def go_back_action():
@@ -177,9 +172,9 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
 
         # Second simulation checker
         self.secondSimCheckBox = ctk.CTkCheckBox(self.topFrame,
-                                                 text="Segunda simulacion",
+                                                 text=LANG_PACK['SECOND_SIM_TEXT'],
                                                  command=self.toggle_second_sim)
-        self.secondSimCheckBox.grid(row=0, column=2, padx=5, pady=5)
+        self.secondSimCheckBox.grid(row=0, column=2, padx=5, pady=5, sticky='ew')
 
 
         # Simulation Parameters Controller
@@ -193,22 +188,23 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
 
 
         # Clamping Menu
-        self.clamp_mode = ctk.StringVar(value='Pressure')
+        self.clamp_mode = ctk.StringVar(value=LANG_PACK['PRESSURE_MODE_SIM_TEXT'])
 
         def set_clamping_variables(mode):
-            if mode == 'Pressure':
+            if mode == LANG_PACK['PRESSURE_MODE_SIM_TEXT']:
                 pass
-            elif mode == 'Volume':
+            elif mode == LANG_PACK['VOLUME_MODE_SIM_TEXT']:
                 pass
 
         self.clamp_menu = ctk.CTkOptionMenu(self,
-                                            values=['Pressure', 'Volume'],
+                                            values=[LANG_PACK['PRESSURE_MODE_SIM_TEXT'],
+                                                    LANG_PACK['VOLUME_MODE_SIM_TEXT']],
                                             variable=self.clamp_mode,
                                             command=set_clamping_variables)
         self.clamp_menu.pack(expand=True, fill=ctk.X)
         # Run Button
         self.runButton = ctk.CTkButton(master=self,
-                                       text="Simular",
+                                       text=LANG_PACK['RUN_SIM_BUT_TEXT'],
                                        command=self.run_sim,
                                        corner_radius=15,
                                        font=("Roboto", 20))
@@ -225,10 +221,10 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
             capacitance, resistance = self.params_controller.get_all_values(tab_name)
             capacitances_list.append(capacitance)
             resistances_list.append(resistance)
-        return capacitances_list, resistances_list
+        return capacitances_list, resistances_list, True
 
     def run_sim(self):
-        capacitances, resistances = self.get_params()
+        capacitances, resistances, option = self.get_params()
         time_vector = np.linspace(0, 15, 1500)
         clamping_function = lambda t: 20.0 * (time_vector[2*len(time_vector)//7] < t < time_vector[4*len(time_vector)//7])
         # aca hay que laburar, ok Definamos un modo y una opcion
@@ -312,7 +308,7 @@ class ParametersControllerTabview(ToggleableTabview):
                 tab.slider_cap2.slider.configure(state='disabled')
                 tab.slider_cap2.slider.configure(button_color='gray')
 
-        tab.switch_cap2 = ctk.CTkSwitch(master=tab, text="Añadir tercer elemento",
+        tab.switch_cap2 = ctk.CTkSwitch(master=tab, text=LANG_PACK['MODEL_SWITCH_THIRD_ELEMENT_TEXT'],
                                          variable=tab.switch_var, command=toggle_cap2,
                                          onvalue=True, offvalue=False)
         tab.switch_cap2.pack(expand=True, fill=ctk.BOTH)
@@ -334,13 +330,11 @@ class ParametersControllerTabview(ToggleableTabview):
         capacitance_1 = getattr(self.tab(tab_name), 'slider_cap1').get()
         capacitance_2 = getattr(self.tab(tab_name), 'slider_cap2').get()
         resistance = getattr(self.tab(tab_name), 'slider_resistance').get()
-
         third_element = getattr(self.tab(tab_name), 'switch_var').get()
         if third_element:
             capacitance = capacitance_1*capacitance_2 / (capacitance_1 + capacitance_2)
         else:
             capacitance = capacitance_1
-
         return capacitance, resistance
 
 
@@ -520,7 +514,7 @@ class AssistedRespirationGraphFrame(ctk.CTkFrame):
         super().__init__(master, **kwargs)
         # The following label is here just to show the other developers my layout ideas
         # The only widget in this frame should be the matplotlib figure
-        self.set_intial_graph()
+        self.set_initial_graph()
 
     def set_initial_graph(self):
         # Generate empty axes graph
@@ -537,10 +531,10 @@ class AssistedRespirationGraphFrame(ctk.CTkFrame):
         graphs.get_tk_widget().pack(expand=True, fill=ctk.BOTH)
 
 
-
 def main():
     root = MainWindow()
     root.mainloop()
+
 
 if __name__ == '__main__':
     main()
