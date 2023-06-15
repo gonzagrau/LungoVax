@@ -1,15 +1,12 @@
 #import numpy as np
 #from matplotlib import pyplot as plt
 from typing import Tuple
-
-import numpy as np
-
 from ODE_solver import *
 from typing import Callable
 
 
 def vol_clamp_sim(time_vector: np.ndarray, capacitance: float, resistance: float, flux: Callable, peep=0.0, *,
-                  pause_lapsus=None, end_time=None) -> Tuple[np.ndarray, ...]:
+                  pause_lapsus=None, end_time=None, **kwargs) -> Tuple[np.ndarray, ...]:
     """
     Time: array containing the time samples
     capacitance: lung compliance
@@ -50,7 +47,7 @@ def vol_clamp_sim(time_vector: np.ndarray, capacitance: float, resistance: float
     return volume, flux, pressure
 
 
-def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable, PEEP=0.0) -> Tuple[np.ndarray, ...]:
+def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable, PEEP=0.0, **kwargs) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
@@ -61,7 +58,8 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable, PEEP=0.0)
     """
     P = np.vectorize(P)
     pressure = P(T)
-    f = lambda t, v : (P(t) - v/C - PEEP)*1/R
+    p_func = lambda t :  pressure[np.abs(T - t).argmin()]
+    f = lambda t, v : (p_func(t) - v/C - PEEP)*1/R
     volume = single_ruku4(T, f, 0)
     flux = np.gradient(volume, T)
     return volume, flux, pressure
@@ -143,6 +141,50 @@ def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: n
         plt.show()
     return fig
 
+def ideal_pulse_func(start: float, end: float, A:float) -> Callable:
+    """
+    start: t_0 - d/2
+    end: t_0 + d/2
+    A: amplitude
+
+    returns a function that represents the pulse function A*Pi( (t-t_0)/d ) evaluated at time=t
+    """
+    t_0 = (start + end)/2
+    d = end - start
+    return lambda t :  A * int( np.abs( (t-t_0)/d ) < 1/2 )
+
+
+def smooth_pulse_func(start: float, end: float, A:float) -> Callable:
+    """
+    start: t_0 - d/2
+    end: t_0 + d/2
+    A: amplitude
+
+    returns a function that represents a smoothed out version of the pulse function A*Pi( (t-t_0)/d ) evaluated at time=t
+    """
+    t_0 = (start + end)/2
+    d = end - start
+    return lambda t : A / np.sqrt(1 + ((t - t_0)/(d/2))**18)
+
+
+def ripply_pulse_func(start: float, end: float, A:float) -> Callable:
+    """
+    start: t_0 - d/2
+    end: t_0 + d/2
+    A: amplitude
+
+    returns a function that represents a ripply version of the pulse function A*Pi( (t-t_0)/d ) evaluated at time=t
+    """
+    j = complex(0, 1)
+    t_0 = (start + end)/2
+    d = end - start
+    f_0 = 1/(t_0 + 2*d)
+    fourier_trans = lambda f : A * d * np.sinc(d*f) * (np.exp(-j*t_0*f))
+    K = 10
+    coeffs = np.array([ f_0*fourier_trans(k*f_0) for k in range(K) ])
+    return lambda t : np.abs( np.sum( [ coeffs[k]*np.exp(j*k*f_0*t) for k in range(K) ] ) )
+
+
 def clamp_test():
     def run_both_tests(T_test, C_test, R_test, func, end_time=None, pause_lapsus=None):
         volume, flux, pressure = pressure_clamp_sim(T_test, C_test, R_test, func)
@@ -157,50 +199,49 @@ def clamp_test():
     C = 100
     R = 0.01
 
-    # Test for hard pulse with a variable amplitude
-    Clamp_func = lambda t: 5.0 * (T[len(T)//3] < t < T[len(T)//2])
-    run_both_tests(T, C, R, Clamp_func)
+    start = T[len(T)//3]
+    end = T[len(T)//2]
+    A = 5.0
 
-    # Test for a sinusoidal pressure with a variable freq and Amp
-    Amp = 3.0
-    freq = 10/np.max(T)
-    Clamp_func = lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp
-    run_both_tests(T, C, R, Clamp_func)
+    # # Test for hard pulse with a variable amplitude
+    # Clamp_func = ideal_pulse_func(start, end, A)
+    # run_both_tests(T, C, R, Clamp_func)
+    #
+    # # Test for a sinusoidal pressure with a variable freq and Amp
+    # Amp = 3.0
+    # freq = 10/np.max(T)
+    # Clamp_func = np.vectorize( lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp )
+    # run_both_tests(T, C, R, Clamp_func)
+    #
+    # # Test for a smooth pulse
+    # Clamp_func = smooth_pulse_func(start, end, A)
+    # pause = 2.0
+    # end_time = end + pause
+    # run_both_tests(T, C, R, Clamp_func, end_time=end_time, pause_lapsus=pause)
 
-    # Test for a square Pressure wave
-    Amp = 3.0
-    freq = 4/np.max(T)
-    Clamp_func = lambda t :  Amp*(np.sin(2*np.pi*freq*t) +
-                                  (1/3)*np.sin(3*2*np.pi*freq*t) +
-                                  (1/5)*np.sin(5*2*np.pi*freq*t) +
-                                  (1/7)*np.sin(7*2*np.pi*freq*t) +
-                                  (1/9)*np.sin(9*2*np.pi*freq*t)) + Amp
-    run_both_tests(T, C, R, Clamp_func)
-
-    # Test for a smooth pulse
-    t_mid = 5.0
-    d = 4.0
-    Clamp_func = lambda t: 3 / np.sqrt(1 + ((t - t_mid)/(d/2))**18)
+    # Test for a ripply pulse
+    Clamp_func = ripply_pulse_func(start, end, A)
     pause = 2.0
-    end_time = t_mid + d/2 + pause
+    end_time = end + pause
     run_both_tests(T, C, R, Clamp_func, end_time=end_time, pause_lapsus=pause)
-
 
 def comp_test():
     C = 10
     R = 0.1
     T = np.linspace(0, 15, 1500)
 
-    d = T[len(T)//4]
-    t_mid = T[len(T)//3]
-    softness = 30
+    start = T[len(T)//3]
+    end = T[len(T)//2]
+    A = 5.0
     pause = 3.0
-    F_hard = lambda t: 3.0 * int(np.abs((t-t_mid)/d) < 1/2)
-    F_soft = lambda t : 3.0 / np.sqrt(1 + np.power((t-t_mid)/(d/2), softness))
+
+    F_hard = ideal_pulse_func(start, end, A)
+    F_soft = smooth_pulse_func(start, end, A)
     v1, f1, p1 = pressure_clamp_sim(T, C, R, F_hard)
     v2, f2, p2 = pressure_clamp_sim(T, C, R, F_soft)
     comparative_plot(T, v1, v2, f1, f2, p1, p2)
 
+
 if __name__ == '__main__':
-   clamp_test()
-   comp_test()
+    clamp_test()
+    #comp_test()

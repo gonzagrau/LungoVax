@@ -5,6 +5,8 @@ import customtkinter as ctk
 import webbrowser
 import lungovax_main as lung
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from PIL import Image
+import language_package_manager as lpm
 
 # Default appearence mode
 ctk.set_appearance_mode('system')
@@ -70,16 +72,27 @@ class MainFrame(ctk.CTkFrame):
 
         self.master = master
 
-        self.rowconfigure(0, weight=20)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(0, weight=10)
+        self.rowconfigure(1, weight=10)
+        self.rowconfigure(2, weight=1)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         self.columnconfigure(2, weight=1)
 
+        self.logo_image = ctk.CTkImage(light_image=Image.open(LOGO_PATH),
+                                       dark_image=Image.open(LOGO_PATH),
+                                       size=(300, 250) )
+        self.logo_button = ctk.CTkButton(self,
+                                         image=self.logo_image,
+                                         fg_color='transparent',
+                                         bg_color='transparent',
+                                         text='',
+                                         hover=False)
+        self.logo_button.grid(row=0, column=1, sticky='nsew')
 
         self.button_assisted_simulation = ctk.CTkButton(self, text=ASSISTED_SIMULATION_BUTTON_TEXT,
                                                         command=self.button_assisted_simulation_action)
-        self.button_assisted_simulation.grid(row=0, column=1, sticky='ew')
+        self.button_assisted_simulation.grid(row=1, column=1, sticky='ew')
 
         self.version_str = ctk.CTkLabel(self, text=VER_STR)
         self.version_str.grid(row=2, column=0, sticky='ew')
@@ -130,8 +143,8 @@ class AssistedRespirationFrame(ctk.CTkFrame):
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=3)
 
-        self.sim_params = AssistedRespirationInputsFrame(self)
-        self.sim_params.grid(row=0, column=0, sticky='nsew')
+        self.sim_inputs = AssistedRespirationInputsFrame(self)
+        self.sim_inputs.grid(row=0, column=0, sticky='nsew')
 
         self.graph_frame = AssistedRespirationGraphFrame(self)
         self.graph_frame.grid(row=0, column=1, sticky='nsew')
@@ -169,9 +182,15 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
         self.secondSimCheckBox.grid(row=0, column=2, padx=5, pady=5)
 
 
-        # Simulation Controller
-        self.controller = ParametersControllerTabview(self)
-        self.controller.pack(expand=True, fill=ctk.BOTH)
+        # Simulation Parameters Controller
+        self.params_controller = ParametersControllerTabview(self)
+        self.params_controller.pack(expand=True, fill=ctk.BOTH)
+
+
+        # Simulation Stimulus Controller
+        self.stim_controller = StimulusControllerTabview(self)
+        self.stim_controller.pack(expand=True, fill=ctk.BOTH)
+
 
         # Clamping Menu
         self.clamp_mode = ctk.StringVar(value='Pressure')
@@ -196,13 +215,14 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
         self.runButton.pack(expand=True, fill=ctk.X)
 
     def toggle_second_sim(self):
-        self.controller.toggle_tab("Sim. 2", self.secondSimCheckBox.get())
+        self.params_controller.toggle_tab("Sim. 2", self.secondSimCheckBox.get())
+        self.stim_controller.toggle_tab("Sim. 2", self.secondSimCheckBox.get())
 
     def get_params(self):
         capacitances_list = []
         resistances_list = []
-        for tab_name in self.controller.tab_list:
-            capacitance, resistance = self.controller.get_all_values(tab_name)
+        for tab_name in self.params_controller.tab_list:
+            capacitance, resistance = self.params_controller.get_all_values(tab_name)
             capacitances_list.append(capacitance)
             resistances_list.append(resistance)
         return capacitances_list, resistances_list
@@ -210,23 +230,68 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
     def run_sim(self):
         capacitances, resistances = self.get_params()
         time_vector = np.linspace(0, 15, 1500)
-        P_func = lambda t: 20.0 * (time_vector[2*len(time_vector)//7] < t < time_vector[4*len(time_vector)//7])
+        clamping_function = lambda t: 20.0 * (time_vector[2*len(time_vector)//7] < t < time_vector[4*len(time_vector)//7])
+        # aca hay que laburar, ok Definamos un modo y una opcion
+        end_time = 8.0
+        pause_lapsus = 2.0
+        if self.clamp_mode.get() == LANG_PACK['PRESSURE_MODE_SIM_TEXT']:
+            sim_func = lung.pressure_clamp_sim
+        elif self.clamp_mode.get() == LANG_PACK['VOLUME_MODE_SIM_TEXT']:
+            sim_func = lung.vol_clamp_sim
+        else:
+            raise ValueError(f'Invalid clamping mode: {self.clamp_mode.get()}')
+
         if len(capacitances) == 1:
-            volume, flux, pressure = lung.pressure_clamp_sim(time_vector, capacitances[0], resistances[0], P_func)
+            volume, flux, pressure = sim_func(time_vector,
+                                              capacitances[0],
+                                              resistances[0],
+                                              clamping_function,
+                                              end_time=end_time,
+                                              pause_lapsus=pause_lapsus)
             fig = lung.plot_VFP(time_vector, volume, flux, pressure, False)
         else:
-            volume1, flux1, pressure1 = lung.pressure_clamp_sim(time_vector, capacitances[0], resistances[0], P_func)
-            volume2, flux2, pressure2 = lung.pressure_clamp_sim(time_vector, capacitances[1], resistances[1], P_func)
+            volume1, flux1, pressure1 = sim_func(time_vector,
+                                              capacitances[0],
+                                              resistances[0],
+                                              clamping_function,
+                                              end_time=end_time,
+                                              pause_lapsus=pause_lapsus)
+            volume2, flux2, pressure2 = sim_func(time_vector,
+                                              capacitances[1],
+                                              resistances[1],
+                                              clamping_function,
+                                              end_time=end_time,
+                                              pause_lapsus=pause_lapsus)
             fig = lung.comparative_plot(time_vector, volume1, volume2, flux1, flux2, pressure1, pressure2, False)
         self.master.update_graph(fig)
 
 
-class ParametersControllerTabview(ctk.CTkTabview):
+class ToggleableTabview(ctk.CTkTabview):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.tab_list = ['Sim. 1']
         self.add("Sim. 1")
         self.configure_tab("Sim. 1")
+    def configure_tab(self, tab_name):
+        pass
+    def toggle_tab(self, tab_name, enabled):
+        try:
+            if enabled:
+                self.add(tab_name)
+                self.configure_tab(tab_name)
+                self.tab_list.append(tab_name)
+            else:
+                self.delete(tab_name)
+                self.tab_list.remove(tab_name)
+        except ValueError:
+            # either tried creating an already existing tab or deleting
+            # non-existing one. Either way, everything should stay as is
+            pass
+
+
+class ParametersControllerTabview(ToggleableTabview):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
 
     def configure_tab(self, tab_name):
         """
@@ -279,19 +344,144 @@ class ParametersControllerTabview(ctk.CTkTabview):
         return capacitance, resistance
 
 
-    def toggle_tab(self, tab_name, enabled):
-        try:
-            if enabled:
-                self.add(tab_name)
-                self.configure_tab(tab_name)
-                self.tab_list.append(tab_name)
+class StimulusControllerTabview(ToggleableTabview):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+    
+    def configure_tab(self, tab_name):
+        # Selection b
+        tab = self.tab(tab_name)
+        tab.selection_frame = StimulusOptions(tab)
+        tab.selection_frame.pack(expand=True, fill=ctk.BOTH)
+
+        # Parameters sliders
+        def chose_parameters_frame(stimulus_type):
+            if stimulus_type == LANG_PACK['IDEAL_PULSE_TEXT']:
+                return IdealPulseParameters
+            elif stimulus_type == LANG_PACK['SMOOTH_PULSE_TEXT']:
+                return SmoothPulseParameters
+            elif stimulus_type == LANG_PACK['HARD_PULSE_TEXT']:
+                return HardPulseParameters
+            elif stimulus_type == LANG_PACK['SINUSOIDAL_TEXT']:
+                return SinusoidalParameters
             else:
-                self.delete(tab_name)
-                self.tab_list.remove(tab_name)
-        except ValueError:
-            # either tried creating an already existing tab or deleting
-            # non-existing one. Either way, everything should stay as is
-            pass
+                raise NotImplementedError('Invalid Stimulus Type.')
+        def change_parameters_frame():
+            skip = True
+            for widget in tab.winfo_children():
+                if skip:
+                    # skip first widget
+                    skip = False
+                    continue
+                print(widget)
+                widget.destroy()
+            tab.type = tab.selection_frame.get_option()
+            tab.parameters_frame = chose_parameters_frame(tab.type)(tab)
+            tab.parameters_frame.pack(expand=True, fill=ctk.BOTH)
+
+        tab.changer = change_parameters_frame
+
+    def get_parameters(self, tab_name):
+        tab = self.tab(tab_name)
+        return tab.parameters_frame.get_parameters()
+
+
+class IdealPulseParameters(ctk.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.start = ParameterSlider(master, LANG_PACK['PULSE_START_TEXT'], 0, 0.3)
+        self.start.pack(expand=True, fill=ctk.X)
+        self.end = ParameterSlider(master, LANG_PACK['PULSE_END_TEXT'], 0.3, 0.8)
+        self.end.pack(expand=True, fill=ctk.X)
+        self.amplitude = ParameterSlider(master, LANG_PACK['PULSE_AMPLITUDE_TEXT'], 0, 4)
+        self.amplitude.pack(expand=True, fill=ctk.X)
+
+    def get_parameters(self):
+        return self.start.get(), self.end.get(), self.amplitude.get()
+
+
+class SmoothPulseParameters(ctk.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.start = ParameterSlider(master, LANG_PACK['PULSE_START_TEXT'], 0, 0.3)
+        self.start.pack(expand=True, fill=ctk.X)
+        self.end = ParameterSlider(master, LANG_PACK['PULSE_END_TEXT'], 0.3, 0.8)
+        self.end.pack(expand=True, fill=ctk.X)
+        self.amplitude = ParameterSlider(master, LANG_PACK['PULSE_AMPLITUDE_TEXT'], 0, 4)
+        self.amplitude.pack(expand=True, fill=ctk.X)
+
+    def get_parameters(self):
+        return self.start.get(), self.end.get(), self.amplitude.get()
+
+
+class HardPulseParameters(ctk.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.start = ParameterSlider(master, LANG_PACK['PULSE_START_TEXT'], 0, 0.3)
+        self.start.pack(expand=True, fill=ctk.X)
+        self.end = ParameterSlider(master, LANG_PACK['PULSE_END_TEXT'], 0.3, 0.8)
+        self.end.pack(expand=True, fill=ctk.X)
+        self.amplitude = ParameterSlider(master, LANG_PACK['PULSE_AMPLITUDE_TEXT'], 0, 4)
+        self.amplitude.pack(expand=True, fill=ctk.X)
+
+    def get_parameters(self):
+        return self.start.get(), self.end.get(), self.amplitude.get()
+
+
+class SinusoidalParameters(ctk.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.amplitude = ParameterSlider(master, LANG_PACK['SINUSOIDAL_AMPLITUDE_TEXT'], 0, 42)
+        self.amplitude.pack(expand=True, fill=ctk.X)
+        self.phase = ParameterSlider(master, LANG_PACK['SINUSOIDAL_PHASE_TEXT'], 0, 90)
+        self.phase.pack(expand=True, fill=ctk.X)
+        self.period = ParameterSlider(master, LANG_PACK['SINUSOIDAL_PERIOD_TEXT'], 1, 4)
+        self.period.pack(expand=True, fill=ctk.X)
+
+    def get_parameters(self):
+        return self.amplitude.get(), self.phase.get(), self.period.get()
+
+
+class StimulusOptions(ctk.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.master = master
+        
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
+
+        self.options = ctk.StringVar(value=LANG_PACK['IDEAL_PULSE_TEXT'])
+
+        def update_parameters():
+            master.changer()
+
+        self.option_1 = ctk.CTkRadioButton(master=self, text=LANG_PACK['IDEAL_PULSE_TEXT'],
+                                           variable=self.options, value=LANG_PACK['IDEAL_PULSE_TEXT'],
+                                           command=update_parameters)
+        self.option_1.grid(row=0, column=0, **padding)
+        self.option_2 = ctk.CTkRadioButton(master=self, text=LANG_PACK['SMOOTH_PULSE_TEXT'],
+                                           variable=self.options, value=LANG_PACK['SMOOTH_PULSE_TEXT'],
+                                           command=update_parameters)
+        self.option_2.grid(row=0, column=1, **padding)
+        self.option_3 = ctk.CTkRadioButton(master=self, text=LANG_PACK['HARD_PULSE_TEXT'],
+                                           variable=self.options, value=LANG_PACK['HARD_PULSE_TEXT'],
+                                           command=update_parameters)
+        self.option_3.grid(row=1, column=0, **padding)
+        self.option_4 = ctk.CTkRadioButton(master=self, text=LANG_PACK['SINUSOIDAL_TEXT'],
+                                           variable=self.options, value=LANG_PACK['SINUSOIDAL_TEXT'],
+                                           command=update_parameters)
+        self.option_4.grid(row=1, column=1, **padding)
+
+    def get_option(self):
+        return self.options.get()
+    
+
+
+
+class IdealPulseParameter(ctk.CTkFrame):
+    pass
 
 
 class ParameterSlider(ctk.CTkFrame):
@@ -332,7 +522,7 @@ class AssistedRespirationGraphFrame(ctk.CTkFrame):
         # The only widget in this frame should be the matplotlib figure
         self.set_intial_graph()
 
-    def set_intial_graph(self):
+    def set_initial_graph(self):
         # Generate empty axes graph
         empty_T = np.linspace(0, 5, 10)
         v, f, p = lung.pressure_clamp_sim(T=np.linspace(0, 5, 10), C=1, R=1, P=lambda t: 0)

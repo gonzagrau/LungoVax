@@ -1,0 +1,23 @@
+{
+  "ASSISTED_SIMULATION_BUTTON_TEXT": "Assisted Respiration\nSimulation",
+  "ASSISTED_SIMULATION_PARAMETERS_FRAME_TEXT": "PARAMETERS",
+  "REP_TEXT": "See Repository on GitHub",
+  "VER_STR": "Version: 1.0",
+  "DARK_MODE_TEXT": "Dark Mode",
+  "LIGHT_MODE_TEXT": "Light Mode",
+  "SECOND_SIM_TEXT": "Second Simulation",
+  "RUN_SIM_BUT_TEXT": "Run Simulation",
+  "PRESSURE_MODE_SIM_TEXT": "PRESSURE",
+  "MODEL_SWITCH_THIRD_ELEMENT_TEXT": "Add Third Element",
+  "VOLUME_MODE_SIM_TEXT": "VOLUME",
+  "IDEAL_PULSE_TEXT": "Ideal Pulse",
+  "SMOOTH_PULSE_TEXT": "Smooth Pulse",
+  "HARD_PULSE_TEXT": "Hard Pulse",
+  "SINUSOIDAL_TEXT": "Sinusoidal",
+  "PULSE_START_TEXT": "Start",
+  "PULSE_END_TEXT": "End",
+  "PULSE_AMPLITUDE_TEXT": "Amplitude",
+  "SINUSOIDAL_AMPLITUDE_TEXT": "Amplitude",
+  "SINUSOIDAL_PHASE_TEXT": "End",
+  "SINUSOIDAL_PERIOD_TEXT": "Period"
+}
