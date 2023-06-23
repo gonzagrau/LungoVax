@@ -2,13 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import customtkinter as ctk
 import webbrowser
-import lungovax_main as lung
+import simulations as lung
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image
 from typing import Tuple, List, Callable
 import language_package_manager as lpm
 
-# Default appearence mode
+
+# Default appearance mode
 ctk.set_appearance_mode('system')
 if ctk.get_appearance_mode() == 'Dark':
     plt.style.use('dark_background')
@@ -16,19 +17,25 @@ else:
     plt.style.use('default')
 
 # IMPORTANT CONSTANTS
-ICON_PATH = 'lung.ico'
-INITIAL_RESOLUTION = '1200x700'
-LOGO_PATH = 'logo.png'
+ICON_PATH = r'./assets/images/lung.ico'
+INITIAL_RESOLUTION = '1200x600'
+LOGO_PATH = r'./assets/images/logo.png'
 REP_URL = r'https://github.com/gonzagrau/LungoVax'
 TITLE = 'LungoVax'
 SIM_TIME = 15.0
 RIPPLE_N = 25
 
-# Shortcup for fast padying
+# Shortcut for fast padding
 padding = {'padx': 5, 'pady':5}
 
-# Displayed text is contained in proper language packages
+# Language Management settings
 LANG_PACK = lpm.get_lang_package()
+LANG_LIST_SF = lpm.LANG_LIST_SF
+LANG_LIST = [LANG_PACK['LANGUAGE_LIST_ENGLISH'], LANG_PACK['LANGUAGE_LIST_SPANISH']]
+LANG_DICTIONARY = {}
+for i, value in enumerate(LANG_LIST):
+    LANG_DICTIONARY[value] = LANG_LIST_SF[i]
+LANG_LIST.sort()
 
 
 # Class definitions for UI
@@ -70,6 +77,7 @@ class MainFrame(ctk.CTkFrame):
     This frame includes: the program logo, a button to access the simulator.
     a version label, a dark/light mode switch, and a GitHub link button.
     """
+
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
@@ -81,7 +89,9 @@ class MainFrame(ctk.CTkFrame):
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         self.columnconfigure(2, weight=1)
+        self.columnconfigure(3, weight=1)
 
+        # Logo image
         self.logo_image = ctk.CTkImage(light_image=Image.open(LOGO_PATH),
                                        dark_image=Image.open(LOGO_PATH),
                                        size=(300, 250) )
@@ -91,15 +101,18 @@ class MainFrame(ctk.CTkFrame):
                                          bg_color='transparent',
                                          text='',
                                          hover=False)
-        self.logo_button.grid(row=0, column=1, sticky='nsew')
+        self.logo_button.grid(row=0, column=1, columnspan=2, sticky='nsew')
 
+        # Simulation button
         self.button_assisted_simulation = ctk.CTkButton(self, text=LANG_PACK['ASSISTED_SIMULATION_BUTTON_TEXT'],
                                                         command=self.button_assisted_simulation_action)
-        self.button_assisted_simulation.grid(row=1, column=1, sticky='ew')
+        self.button_assisted_simulation.grid(row=1, column=1, columnspan=2, sticky='ew')
 
+        # Version string label
         self.version_str = ctk.CTkLabel(self, text=LANG_PACK['VER_STR'])
         self.version_str.grid(row=2, column=0, sticky='ew')
 
+        # Switch mode button
         self.mode_switch_var = ctk.BooleanVar(self, True)
         self.mode_switch = ctk.CTkSwitch(self,
                                          variable=self.mode_switch_var,
@@ -113,12 +126,17 @@ class MainFrame(ctk.CTkFrame):
             self.mode_switch.configure(text=LANG_PACK['LIGHT_MODE_TEXT'])
         self.mode_switch.grid(row=2, column=1)
 
+        # Select Language
+        self.language_menu = ctk.CTkOptionMenu(self, values=LANG_LIST, command=self.language_selection_action)
+        self.language_menu.grid(row=2, column=2)
+
+        # View repository button
         self.but_view_repo = ctk.CTkButton(self,
                                            text=LANG_PACK['REP_TEXT'],
                                            text_color=('black', 'white'),
                                            command=lambda: webbrowser.open_new(REP_URL),
                                            fg_color='transparent')
-        self.but_view_repo.grid(row=2, column=2)
+        self.but_view_repo.grid(row=2, column=3)
 
     def button_assisted_simulation_action(self):
         self.master.current_frame = AssistedRespirationFrame(self.master)
@@ -133,6 +151,20 @@ class MainFrame(ctk.CTkFrame):
             ctk.set_appearance_mode("dark")
             plt.style.use('dark_background')
             self.mode_switch.configure(text=LANG_PACK['DARK_MODE_TEXT'])
+
+    def language_selection_action(self, language_str):
+        global LANG_DICTIONARY
+        global LANG_PACK
+        global LANG_LIST
+        LANG_PACK = lpm.get_lang_package(LANG_DICTIONARY[language_str])
+        LANG_LIST = [LANG_PACK['LANGUAGE_LIST_ENGLISH'], LANG_PACK['LANGUAGE_LIST_SPANISH']]
+        LANG_DICTIONARY = {}
+        for index, language in enumerate(LANG_LIST):
+            LANG_DICTIONARY[language] = LANG_LIST_SF[index]
+        LANG_LIST.sort()
+        self.master.current_frame = MainFrame(self.master)
+
+
 
 
 class AssistedRespirationFrame(ctk.CTkFrame):
