@@ -19,7 +19,7 @@ def get_system_language():
         return 'en'
 
 
-def get_lang_package(lang: None|str = None):
+def get_lang_package(lang: None | str = None):
     if lang is None:
         lang = get_system_language()
     if lang not in LANG_LIST_SF:
@@ -27,3 +27,6 @@ def get_lang_package(lang: None|str = None):
     lang_path = LANG_DICTIONARY_PATHS[lang]
     with open(lang_path, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+
+LANG_PACK = get_lang_package()

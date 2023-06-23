@@ -1,4 +1,2 @@
 # LungoVax
-A simulator of the 2-element respiratory mechanics model
-
-TODO
+This project intends to be the more complete and powerful respiratory simulator for didactic purposes. 
