@@ -1,8 +1,7 @@
-#import numpy as np
-#from matplotlib import pyplot as plt
 from typing import Tuple
 from ODE_solver import *
 from typing import Callable
+from GUI_lungovax import LANG_PACK
 
 
 def vol_clamp_sim(time_vector: np.ndarray, capacitance: float, resistance: float, flux: Callable, peep=0.0, *,
@@ -14,7 +13,7 @@ def vol_clamp_sim(time_vector: np.ndarray, capacitance: float, resistance: float
     flux: flux to be applied before the exhalation begins
     peep: positive end-expiratory pressure
     end_time: time when inhalation ends
-    pause_lapsus: lenght of the time interval between inhalation and exhalation
+    pause_lapsus: length of the time interval between inhalation and exhalation
 
     returns: volume, flux, and pressure for every instant of time
     """
@@ -58,19 +57,21 @@ def pressure_clamp_sim(T: np.ndarray, C: float, R: float, P: Callable, PEEP=0.0,
     """
     P = np.vectorize(P)
     pressure = P(T)
-    p_func = lambda t :  pressure[np.abs(T - t).argmin()]
-    f = lambda t, v : (p_func(t) - v/C - PEEP)*1/R
+    p_func = lambda t:  pressure[np.abs(T - t).argmin()]
+    f = lambda t, v: (p_func(t) - v/C - PEEP)*1/R
     volume = single_ruku4(T, f, 0)
     flux = np.gradient(volume, T)
     return volume, flux, pressure
 
 
-def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.ndarray, show=True) -> None:
+def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.ndarray,
+             show=True, lang_pack=LANG_PACK) -> None:
     """
         T: array representing time
         volume, flux, pressure: arrays representing each quantity for every instant T[i]
         plots volume, flux, and pressure against time
     """
+    plt.close()
     fig, axs = plt.subplot_mosaic(
         [["top left", "right column"],
          ["middle left", "right column"],
@@ -78,18 +79,18 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     )
 
     axs["top left"].plot(T, volume, color='blue')
-    axs["top left"].set_ylabel('Volume [ml]')
+    axs["top left"].set_ylabel(lang_pack['VOLUME_LABEL'])
 
     axs["middle left"].plot(T, flux, color='green')
-    axs["middle left"].set_ylabel("Flux [L/min]")
+    axs["middle left"].set_ylabel(lang_pack['FLUX_LABEL'])
 
     axs["bottom left"].plot(T, pressure, color='deeppink')
-    axs["bottom left"].set_ylabel("Pressure [cmH2O]")
-    axs["bottom left"].set_xlabel("Time [s]")
+    axs["bottom left"].set_ylabel(lang_pack['PRESSURE_LABEL'])
+    axs["bottom left"].set_xlabel(lang_pack['TIME_LABEL'])
 
     axs["right column"].plot(volume, flux, color='r', linestyle='-')
-    axs["right column"].set_xlabel("Volume [ml]")
-    axs["right column"].set_ylabel("Flux [L/min]")
+    axs["right column"].set_xlabel(lang_pack['VOLUME_LABEL'])
+    axs["right column"].set_ylabel(lang_pack['FLUX_LABEL'])
     axs["right column"].axhline(y=0, color='y', linestyle='-')
 
     # Tight layout
@@ -101,37 +102,38 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
 
 
 def comparative_plot(T: np.ndarray, vol1: np.ndarray, vol2: np.ndarray, flux1: np.ndarray,
-                     flux2: np.ndarray, press1: np.ndarray, press2: np.ndarray, show=True) -> None:
+                     flux2: np.ndarray, press1: np.ndarray, press2: np.ndarray, show=True, lang_pack=LANG_PACK) -> None:
     """
         T: array representing time
         vol1, flux1, press1: arrays representing initial volume, flux, and pressure for every instant T[i]
         vol2, flux2, press2: arrays representing final volume, flux, and pressure for every instant T[i]
         plots initial and final volume, flux, and pressure against time, superimposed.
     """
+    plt.close()
     fig, axs = plt.subplot_mosaic([['top left', 'right'],
                                     ['medium left', 'right'], 
                                     ['bottom left', 'right']])
     # Comparative values display in right and left 
     # Setting x axes as time
-    axs["bottom left"].set_xlabel('Time [s]')
+    axs["bottom left"].set_xlabel(lang_pack['TIME_LABEL'])
     
     # Plotting volume comparison (time)
     axs["top left"].plot(T, vol1, '-b', T, vol2, '-.b')
-    axs["top left"].set_ylabel('Volume [ml]')
+    axs["top left"].set_ylabel(lang_pack['VOLUME_LABEL'])
 
     # Plotting flux comparison (time)
     axs["medium left"].plot(T, flux1, '-g', T, flux2, '-.g')
-    axs["medium left"].set_ylabel("Flux [L/min]")
+    axs["medium left"].set_ylabel(lang_pack['FLUX_LABEL'])
     
     # Plotting pressure comparison (time)
-    axs["bottom left"].plot(T, press1, color = 'deeppink')
-    axs["bottom left"].plot(T, press2, linestyle = '-.', color = 'deeppink')
-    axs["bottom left"].set_ylabel("Pressure [cmH2O]")
+    axs["bottom left"].plot(T, press1, color='deeppink')
+    axs["bottom left"].plot(T, press2, linestyle='-.', color='deeppink')
+    axs["bottom left"].set_ylabel(lang_pack['PRESSURE_LABEL'])
 
     # plotting volume vs flux (comparative) where the flux is considered to be positive inwards
     axs["right"].plot(vol1, flux1, '-r', vol2, flux2, '-.r')
-    axs["right"].set_xlabel('Volume [ml]')
-    axs["right"].set_ylabel("Flux [L/min]")
+    axs["right"].set_xlabel(lang_pack['VOLUME_LABEL'])
+    axs["right"].set_ylabel(lang_pack['FLUX_LABEL'])
     axs["right"].axhline(y=0, color='y', linestyle='-')
     
     # Tight layout
