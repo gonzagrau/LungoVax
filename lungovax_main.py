@@ -87,7 +87,7 @@ def plot_VFP(T: np.ndarray, volume: np.ndarray, flux: np.ndarray, pressure: np.n
     axs["bottom left"].set_ylabel("Pressure [cmH2O]")
     axs["bottom left"].set_xlabel("Time [s]")
 
-    axs["right column"].plot(volume, flux, alpha=0.5, color='r', linestyle='-')
+    axs["right column"].plot(volume, flux, color='r', linestyle='-')
     axs["right column"].set_xlabel("Volume [ml]")
     axs["right column"].set_ylabel("Flux [L/min]")
     axs["right column"].axhline(y=0, color='y', linestyle='-')
@@ -167,22 +167,35 @@ def smooth_pulse_func(start: float, end: float, A:float) -> Callable:
     return lambda t : A / np.sqrt(1 + ((t - t_0)/(d/2))**18)
 
 
-def ripply_pulse_func(start: float, end: float, A:float) -> Callable:
+def ripply_pulse_func(start: float, end: float, A:float, N:int, lenght:float) -> Callable:
     """
     start: t_0 - d/2
     end: t_0 + d/2
     A: amplitude
+    N: number of iterations for the approximation
+    lenght: maximum window of time to be considered
 
     returns a function that represents a ripply version of the pulse function A*Pi( (t-t_0)/d ) evaluated at time=t
     """
-    j = complex(0, 1)
     t_0 = (start + end)/2
     d = end - start
-    f_0 = 1/(t_0 + 2*d)
-    fourier_trans = lambda f : A * d * np.sinc(d*f) * (np.exp(-j*t_0*f))
-    K = 10
-    coeffs = np.array([ f_0*fourier_trans(k*f_0) for k in range(K) ])
-    return lambda t : np.abs( np.sum( [ coeffs[k]*np.exp(j*k*f_0*t) for k in range(K) ] ) )
+    f_0 = 1/lenght
+    def fourier_pulse(t):
+        result = 0
+        w_0 = 2 * np.pi * f_0
+        for n in range(-N, N + 1):
+            Xn = A * d * f_0 * np.sinc(n * f_0 * d) * np.exp(-1j * n * w_0 * t_0)
+            result += np.real(Xn * np.exp(1j * n * w_0 * t))
+        return result
+
+    return fourier_pulse
+
+
+def sinusoidal_func(amplitude: float, phase: float, freq:float) -> Callable:
+    """
+    Generates a sinusoidal function with the specified parameters
+    """
+    return lambda t : amplitude*np.sin(2*np.pi*freq*t + phase) + amplitude
 
 
 def clamp_test():
@@ -203,24 +216,26 @@ def clamp_test():
     end = T[len(T)//2]
     A = 5.0
 
-    # # Test for hard pulse with a variable amplitude
-    # Clamp_func = ideal_pulse_func(start, end, A)
-    # run_both_tests(T, C, R, Clamp_func)
-    #
-    # # Test for a sinusoidal pressure with a variable freq and Amp
-    # Amp = 3.0
-    # freq = 10/np.max(T)
-    # Clamp_func = np.vectorize( lambda t :  Amp*np.cos(2*np.pi*freq*t) + Amp )
-    # run_both_tests(T, C, R, Clamp_func)
-    #
-    # # Test for a smooth pulse
-    # Clamp_func = smooth_pulse_func(start, end, A)
-    # pause = 2.0
-    # end_time = end + pause
-    # run_both_tests(T, C, R, Clamp_func, end_time=end_time, pause_lapsus=pause)
+    # Test for hard pulse with a variable amplitude
+    Clamp_func = ideal_pulse_func(start, end, A)
+    run_both_tests(T, C, R, Clamp_func)
+
+    # Test for a sinusoidal pressure with a variable freq and Amp
+    Amp = 3.0
+    freq = 10/np.max(T)
+    Clamp_func = sinusoidal_func(Amp, 0, freq)
+    run_both_tests(T, C, R, Clamp_func)
+
+    # Test for a smooth pulse
+    Clamp_func = smooth_pulse_func(start, end, A)
+    pause = 2.0
+    end_time = end + pause
+    run_both_tests(T, C, R, Clamp_func, end_time=end_time, pause_lapsus=pause)
 
     # Test for a ripply pulse
-    Clamp_func = ripply_pulse_func(start, end, A)
+    N_iter = 20
+    lenght = T[-1]
+    Clamp_func = ripply_pulse_func(start, end, A, N_iter,lenght)
     pause = 2.0
     end_time = end + pause
     run_both_tests(T, C, R, Clamp_func, end_time=end_time, pause_lapsus=pause)

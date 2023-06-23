@@ -12,7 +12,7 @@
   "VOLUME_MODE_SIM_TEXT": "VOLUME",
   "IDEAL_PULSE_TEXT": "Ideal Pulse",
   "SMOOTH_PULSE_TEXT": "Smooth Pulse",
-  "HARD_PULSE_TEXT": "Hard Pulse",
+  "REAL_PULSE_TEXT": "Hard Pulse",
   "SINUSOIDAL_TEXT": "Sinusoidal",
   "PULSE_START_TEXT": "Start",
   "PULSE_END_TEXT": "End",
