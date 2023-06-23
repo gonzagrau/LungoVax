@@ -24,7 +24,7 @@ def vol_clamp_sim(time_vector: np.ndarray, capacitance: float, resistance: float
     """
 
     if end_time is None:
-        end_time = time_vector[len(time_vector) // 2]
+        end_time = time_vector[int(0.6*len(time_vector))]
 
     if pause_lapsus is None:
         pause_lapsus = np.max(time_vector) * 0.1

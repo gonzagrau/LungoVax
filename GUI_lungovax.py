@@ -22,11 +22,12 @@ INITIAL_RESOLUTION_POSITION = '1200x800+0+0'  # Not used
 LOGO_PATH = r'./assets/images/logo.png'
 REP_URL = r'https://github.com/gonzagrau/LungoVax'
 TITLE = 'LungoVax'
-SIM_TIME = 15.0
+SIM_TIME = 10.0
 RIPPLE_N = 25
 PULMONARY_COMPLIANCE_RANGE = [50, 200]
 THORACIC_COMPLIANCE_RANGE = [200, 400]
 COMBINED_COMPLIANCE_RANGE = [50*200/250, 200*400/600]
+AIRWAY_RESISTANCE_RANGE = [0.5, 5.5]
 COMPLIANCE_UNITS = '$\\left[\\frac{mL}{cmH_2O}\\right]$'
 RESISTANCE_UNITS = '$\\left[\\frac{cmH_2O}{Ls}\\right]$'
 
@@ -276,12 +277,15 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
             resistances_list.append(resistance)
         return capacitances_list, resistances_list
 
-    def get_clamping_funcs(self) -> List[Callable]:
+    def get_clamping_funcs(self) -> Tuple[List[Callable], List[float], List[float]]:
         func_list = []
+        end_times = []
+        pauses = []
         for tab_name in self.params_controller.tab_list:
             values = self.params_controller.get_stimulus_parameters(tab_name)
             choice = self.params_controller.get_clamping_option(tab_name)
-
+            end_time = None
+            pause_lapsus = None
             # Adjusting amplitude
             if self.clamp_mode.get() == LANG_PACK['PRESSURE_MODE_SIM_TEXT']:
                 multiplier = 1/10
@@ -294,14 +298,19 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
                 start, end, amplitude = values
                 amplitude *= multiplier
                 func = lung.ideal_pulse_func(start, end, amplitude)
+                end_time = end
             elif choice == LANG_PACK["SMOOTH_PULSE_TEXT"]:
                 start, end, amplitude = values
                 amplitude *= multiplier
                 func = lung.smooth_pulse_func(start, end, amplitude)
+                pause_lapsus = 0
+                end_time = end + 0.1 * SIM_TIME
             elif choice == LANG_PACK["REAL_PULSE_TEXT"]:
                 start, end, amplitude = values
                 amplitude *= multiplier
                 func = lung.ripply_pulse_func(start, end, amplitude, iterations=RIPPLE_N, length=SIM_TIME)
+                pause_lapsus = 0
+                end_time = end + 0.1 * SIM_TIME
             elif choice == LANG_PACK["SINUSOIDAL_TEXT"]:
                 amplitude, phase, period = values
                 amplitude *= multiplier * 30
@@ -312,15 +321,15 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
             else:
                 raise ValueError("Invalid function choice")
             func_list.append(func)
-        return func_list
+            end_times.append(end_time)
+            pauses.append(pause_lapsus)
+        return func_list, end_times, pauses
 
     def run_sim(self):
         time_vector = np.linspace(0, SIM_TIME, 1500)
         capacitances, resistances = self.get_params()
         resistances = np.array(resistances)/1000.  # Converting between cmH20/(Ls) to cmH20/(mLs)
-        clamping_functions = self.get_clamping_funcs()
-        end_time = 8.0
-        pause_lapsus = 2.0
+        clamping_functions, end_times, pauses = self.get_clamping_funcs()
         if self.clamp_mode.get() == LANG_PACK['PRESSURE_MODE_SIM_TEXT']:
             sim_func = lung.pressure_clamp_sim
         elif self.clamp_mode.get() == LANG_PACK['VOLUME_MODE_SIM_TEXT']:
@@ -333,16 +342,16 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
                                               capacitances[0],
                                               resistances[0],
                                               clamping_functions[0],
-                                              end_time=end_time,
-                                              pause_lapsus=pause_lapsus)
+                                              end_time=end_times[0],
+                                              pause_lapsus=pauses[0])
             flux *= 60 / 1000  # Converting from mL/s to L/min
             fig = lung.plot_vfp(time_vector, volume, flux, pressure, False, LANG_PACK)
         else:
             volume1, flux1, pressure1 = sim_func(time_vector, capacitances[0], resistances[0], clamping_functions[0],
-                                                 end_time=end_time, pause_lapsus=pause_lapsus)
+                                                 end_time=end_times[0], pause_lapsus=pauses[0])
             flux1 *= 60 / 1000  # Converting from mL/s to L/min
             volume2, flux2, pressure2 = sim_func(time_vector, capacitances[1], resistances[1], clamping_functions[1],
-                                                 end_time=end_time, pause_lapsus=pause_lapsus)
+                                                 end_time=end_times[1], pause_lapsus=pauses[1])
             flux2 *= 60 / 1000  # Converting from mL/s to L/min
             fig = lung.comparative_plot(time_vector, volume1, volume2, flux1, flux2, pressure1, pressure2, False)
         self.master.update_graph(fig)
@@ -413,13 +422,18 @@ class ParameterSlider(ctk.CTkFrame):
     def get(self):
         return self.slider.get()
 
+    def set(self, val):
+        self.slider.set(val)
+
 
 class PulseParameters(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, fg_color='transparent', **kwargs)
-        self.start = ParameterSlider(self, LANG_PACK['PULSE_START_TEXT'], 0, 0.75 * SIM_TIME)
+        self.start = ParameterSlider(self, LANG_PACK['PULSE_START_TEXT'], 0, SIM_TIME)
+        self.start.set(0.2*SIM_TIME)
         self.start.pack(expand=True, fill=ctk.X)
-        self.end = ParameterSlider(self, LANG_PACK['PULSE_END_TEXT'], 0.5 * SIM_TIME, SIM_TIME)
+        self.end = ParameterSlider(self, LANG_PACK['PULSE_END_TEXT'], 0, SIM_TIME)
+        self.end.set(0.5*SIM_TIME)
         self.end.pack(expand=True, fill=ctk.X)
         self.amplitude = ParameterSlider(self, LANG_PACK['PULSE_AMPLITUDE_TEXT'], 10, 100)
         self.amplitude.pack(expand=True, fill=ctk.X)
@@ -489,7 +503,8 @@ class SimulationParametersControllerTabview(ToggleableTabview):
         tab.slider_cap2.pack(expand=True, fill=ctk.BOTH)
 
         # Resistance
-        tab.slider_resistance = ParameterSlider(tab, f"{LANG_PACK['AIRWAY_RESISTANCE_TEXT']} {RESISTANCE_UNITS}", .5, 3)
+        tab.slider_resistance = ParameterSlider(tab, f"{LANG_PACK['AIRWAY_RESISTANCE_TEXT']} {RESISTANCE_UNITS}",
+                                                *AIRWAY_RESISTANCE_RANGE)
         tab.slider_resistance.pack(expand=True, fill=ctk.BOTH)
 
         # Stimulus Options Section Title
