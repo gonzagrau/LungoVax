@@ -18,7 +18,8 @@ else:
 
 # IMPORTANT CONSTANTS
 ICON_PATH = r'./assets/images/lung.ico'
-INITIAL_RESOLUTION_POSITION = '1200x800+0+0'  # Not used
+FULL_SCREEN = False
+INITIAL_RESOLUTION_POSITION = '1200x800+5+5'
 LOGO_PATH = r'./assets/images/logo.png'
 REP_URL = r'https://github.com/gonzagrau/LungoVax'
 TITLE = 'LungoVax'
@@ -50,7 +51,10 @@ class MainWindow(ctk.CTk):
         super().__init__(*args, **kwargs)
         self.title(TITLE)
         self.iconbitmap(ICON_PATH)
-        self.geometry("%dx%d+0+0" %(self.winfo_screenwidth(), self.winfo_screenheight()))
+        if FULL_SCREEN:
+            self.geometry("%dx%d+0+0" %(self.winfo_screenwidth(), self.winfo_screenheight()))
+        else:
+            self.geometry(INITIAL_RESOLUTION_POSITION)
 
         # self.resizable(False, False)
         self.grid_columnconfigure(0, weight=1)
