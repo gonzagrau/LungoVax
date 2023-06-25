@@ -399,7 +399,7 @@ class ParameterSlider(ctk.CTkFrame):
 
         # Title
         plt.close()
-        fig, ax = plt.subplots(figsize=(1, 1))
+        fig, ax = plt.subplots(figsize=(1, .7))
         try:
             tone = int(self.master['background'][-2:])
         except ValueError:
@@ -407,7 +407,7 @@ class ParameterSlider(ctk.CTkFrame):
         hex_color = '#%02x%02x%02x' % (int(256 * tone/100), int(256 * tone/100), int(256 * tone/100))
         fig.set_facecolor(hex_color)
         ax.axis(False)
-        ax.text(.5, .5, title_text, ha='center', va='center', fontsize=10)
+        ax.text(.5, .5, title_text, ha='center', va='center', fontsize=8)
         graphs = FigureCanvasTkAgg(fig, self)
         graphs.get_tk_widget().grid(row=0, column=0)
 
