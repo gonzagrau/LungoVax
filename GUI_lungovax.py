@@ -391,7 +391,7 @@ class ParameterSlider(ctk.CTkFrame):
     This class is used to create the parameters sliders for each tab view in the assisted
     respiration simulation frame
     """
-    def __init__(self, master, title_text, from_value, to_value, **kwargs):
+    def __init__(self, master, title_text, from_value, to_value, text_size=8, **kwargs):
         super().__init__(master, fg_color='transparent', **kwargs)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=4)
@@ -407,7 +407,7 @@ class ParameterSlider(ctk.CTkFrame):
         hex_color = '#%02x%02x%02x' % (int(256 * tone/100), int(256 * tone/100), int(256 * tone/100))
         fig.set_facecolor(hex_color)
         ax.axis(False)
-        ax.text(.5, .5, title_text, ha='center', va='center', fontsize=8)
+        ax.text(.5, .5, title_text, ha='center', va='center', fontsize=text_size)
         graphs = FigureCanvasTkAgg(fig, self)
         graphs.get_tk_widget().grid(row=0, column=0)
 
@@ -433,13 +433,13 @@ class ParameterSlider(ctk.CTkFrame):
 class PulseParameters(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, fg_color='transparent', **kwargs)
-        self.start = ParameterSlider(self, LANG_PACK['PULSE_START_TEXT'], 0, SIM_TIME)
+        self.start = ParameterSlider(self, LANG_PACK['PULSE_START_TEXT'], 0, SIM_TIME, text_size=10)
         self.start.set(0.2*SIM_TIME)
         self.start.pack(expand=True, fill=ctk.X)
-        self.end = ParameterSlider(self, LANG_PACK['PULSE_END_TEXT'], 0, SIM_TIME)
+        self.end = ParameterSlider(self, LANG_PACK['PULSE_END_TEXT'], 0, SIM_TIME, text_size=10)
         self.end.set(0.5*SIM_TIME)
         self.end.pack(expand=True, fill=ctk.X)
-        self.amplitude = ParameterSlider(self, LANG_PACK['PULSE_AMPLITUDE_TEXT'], 10, 100)
+        self.amplitude = ParameterSlider(self, LANG_PACK['PULSE_AMPLITUDE_TEXT'], 10, 100, text_size=10)
         self.amplitude.pack(expand=True, fill=ctk.X)
 
     def get_parameters(self) -> Tuple[float, float, float]:
@@ -449,11 +449,11 @@ class PulseParameters(ctk.CTkFrame):
 class SinusoidalParameters(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, fg_color='transparent', **kwargs)
-        self.amplitude = ParameterSlider(self, LANG_PACK['SINUSOIDAL_AMPLITUDE_TEXT'], 10, 100)
+        self.amplitude = ParameterSlider(self, LANG_PACK['SINUSOIDAL_AMPLITUDE_TEXT'], 10, 100, text_size=10)
         self.amplitude.pack(expand=True, fill=ctk.X)
-        self.phase = ParameterSlider(self, LANG_PACK['SINUSOIDAL_PHASE_TEXT'], 0, 90)
+        self.phase = ParameterSlider(self, LANG_PACK['SINUSOIDAL_PHASE_TEXT'], 0, 90, text_size=10)
         self.phase.pack(expand=True, fill=ctk.X)
-        self.period = ParameterSlider(self, LANG_PACK['SINUSOIDAL_PERIOD_TEXT'], 1, 4)
+        self.period = ParameterSlider(self, LANG_PACK['SINUSOIDAL_PERIOD_TEXT'], 1, 4, text_size=10)
         self.period.pack(expand=True, fill=ctk.X)
 
     def get_parameters(self) -> Tuple[float, float, float]:
