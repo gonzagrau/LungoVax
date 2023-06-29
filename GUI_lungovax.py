@@ -8,7 +8,6 @@ from PIL import Image
 from typing import Tuple, List, Callable
 import language_package_manager as lpm
 
-
 # Default appearance mode
 ctk.set_appearance_mode('system')
 if ctk.get_appearance_mode() == 'Dark':
@@ -64,6 +63,15 @@ class MainWindow(ctk.CTk):
         self.current_frame = MainFrame(self)
         # self.state('zoomed') # This is not working
 
+        # Setting closing protocol
+        self.protocol("WM_DELETE_WINDOW", self._quit_me)
+
+    def _quit_me(self):
+    # This ensures that the program stops when the main window is closed
+        print('quit')
+        self.quit()
+        self.destroy()
+
     @property
     def current_frame(self):
         return self._current_frame
@@ -85,7 +93,8 @@ class MainWindow(ctk.CTk):
 class MainFrame(ctk.CTkFrame):
     """
     This frame includes: the program logo, a button to access the simulator.
-    a version label, a dark/light mode switch, and a GitHub link button.
+    a version label, a dark/light mode switch, a language selector, and a
+    GitHub link button.
     """
 
     def __init__(self, master: MainWindow, **kwargs):
@@ -127,6 +136,7 @@ class MainFrame(ctk.CTkFrame):
         self.mode_switch = ctk.CTkSwitch(self,
                                          variable=self.mode_switch_var,
                                          command=self.mode_switch_action,
+                                         progress_color=('white', 'gray'),
                                          onvalue=True, offvalue=False)
         if ctk.get_appearance_mode() == 'Dark':
             self.mode_switch.deselect()
@@ -137,7 +147,13 @@ class MainFrame(ctk.CTkFrame):
         self.mode_switch.grid(row=2, column=1)
 
         # Select Language
-        self.language_menu = ctk.CTkOptionMenu(self, values=LANG_LIST, command=self.language_selection_action)
+        self.language_menu = ctk.CTkOptionMenu(self,
+                                               values=LANG_LIST,
+                                               command=self.language_selection_action,
+                                               fg_color=self.cget('fg_color'),
+                                               button_color=self.cget('fg_color'),
+                                               button_hover_color=('white', 'gray'),
+                                               text_color=('black', 'white'))
         self.language_menu.grid(row=2, column=2)
 
         # View repository button
@@ -348,15 +364,15 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
                                               clamping_functions[0],
                                               end_time=end_times[0],
                                               pause_lapsus=pauses[0])
-            flux *= 60 / 1000  # Converting from mL/s to L/min
+            flux = flux * 60.0 / 1000.0  # Converting from mL/s to L/min
             fig = lung.plot_vfp(time_vector, volume, flux, pressure, False, LANG_PACK)
         else:
             volume1, flux1, pressure1 = sim_func(time_vector, capacitances[0], resistances[0], clamping_functions[0],
                                                  end_time=end_times[0], pause_lapsus=pauses[0])
-            flux1 *= 60 / 1000  # Converting from mL/s to L/min
+            flux1 = flux1 * 60.0 / 1000.0  # Converting from mL/s to L/min
             volume2, flux2, pressure2 = sim_func(time_vector, capacitances[1], resistances[1], clamping_functions[1],
                                                  end_time=end_times[1], pause_lapsus=pauses[1])
-            flux2 *= 60 / 1000  # Converting from mL/s to L/min
+            flux2 = flux2 * 60.0 / 1000.0  # Converting from mL/s to L/min
             fig = lung.comparative_plot(time_vector, volume1, volume2, flux1, flux2, pressure1, pressure2, False)
         self.master.update_graph(fig)
 

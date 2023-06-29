@@ -178,7 +178,7 @@ def smooth_pulse_func(start: float, end: float, amplitude: float) -> Callable:
     """
     t_0 = (start + end)/2
     d = end - start
-    return lambda t: amplitude / np.sqrt(1 + ((t - t_0) / (d / 2)) ** 18)
+    return lambda t: amplitude / np.sqrt(1 + ((t - t_0) / (d / 2)) ** 40)
 
 
 def ripply_pulse_func(start: float, end: float, amplitude: float, iterations: int, length: float) -> Callable:
