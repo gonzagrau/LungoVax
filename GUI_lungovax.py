@@ -223,6 +223,9 @@ class AssistedRespirationFrame(ctk.CTkFrame):
         """
         self.master.current_frame = MainFrame(self.master)
 
+    def reset_all(self):
+        self.master.current_frame = AssistedRespirationFrame(self.master)
+
 
 class AssistedRespirationInputsFrame(ctk.CTkFrame):
     """
@@ -251,6 +254,14 @@ class AssistedRespirationInputsFrame(ctk.CTkFrame):
         self.goBack = ctk.CTkButton(self.topFrame, text='<', command=go_back_action,
                                     width=15, height=15, corner_radius=15)
         self.goBack.grid(row=0, column=1, sticky='w', padx=5, pady=5)
+
+        def reset_frame():
+            self.master.reset_all()
+
+
+        # Reset parameters Button
+        self.reset_frame = ctk.CTkButton(self.topFrame, text=LANG_PACK["RESET_PARAMETERS"], command=reset_frame)
+        self.reset_frame.grid(row=0, column=1, padx=5, pady=5)
 
         # Second simulation checker
         self.secondSimCheckBox = ctk.CTkCheckBox(self.topFrame,
