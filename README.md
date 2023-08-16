@@ -142,8 +142,12 @@ def higher_order_ODE(T: np.ndarray, f: Callable, X_0: np.ndarray, v: np.ndarray)
 ### assisted_respiration_simulation.py
 This module implements the base equation for the model, and runs the simulations for any given input. There are two types of simulations: volume clamp and presure clamp. The difference between the two is which variable (either flux or pressure) is set as an input. Thus, the following two functions are defined:
 ```python
-def vol_clamp_sim(time_vector: np.ndarray, capacitance: float, resistance: float, flux: Callable, peep=0.0, *,
-                  pause_lapsus=None, end_time=None, **kwargs) -> Tuple[np.ndarray, ...]:
+def vol_clamp_sim(time_vector: np.ndarray,
+                  capacitance: float, resistance: float,
+                  flux: Callable,
+                  peep=0.0, *,
+                  pause_lapsus=None,
+                  end_time=None, **kwargs) -> Tuple[np.ndarray, ...]:
     """
     Time: array containing the time samples
     capacitance: lung compliance
@@ -185,8 +189,10 @@ def vol_clamp_sim(time_vector: np.ndarray, capacitance: float, resistance: float
 ```
 
 ```python
-def pressure_clamp_sim(time_array: np.ndarray, compliance: float, resistance: float, pressure_function: Callable,
-                       peep=0.0, **kwargs) -> Tuple[np.ndarray, ...]:
+def pressure_clamp_sim(time_array: np.ndarray,
+                        compliance: float, resistance: float,
+                        pressure_function: Callable,
+                        peep=0.0, **kwargs) -> Tuple[np.ndarray, ...]:
     """
     T: array containing the time samples
     C: lung compliance
